@@ -942,7 +942,7 @@ function clearSession() {
   try { localStorage.removeItem('wtb_demo_user'); } catch (e) {}
 }
 
-// Carry: gerçek açılış düzeltme kayıtları (Mutlu Akü WTB'sinden, TL bin ölçekli)
+// Carry: gerçek açılış düzeltme kayıtları (ABC WTB'sinden, TL bin ölçekli)
 state.carry.addEntry({ adjNo:10, groupLabel:"Employee Termination Benefits", accountCode:25410, debit:2104.66, credit:0.0, source:'manual' });
 state.carry.addEntry({ adjNo:10, groupLabel:"Employee Termination Benefits", accountCode:24200, debit:0.0, credit:2104.66, source:'manual' });
 state.carry.addEntry({ adjNo:10, groupLabel:"Deferred tax CY", accountCode:21100, debit:0.0, credit:33371.62, source:'manual' });
@@ -1053,7 +1053,7 @@ state.carry.addEntry({ adjNo:31, groupLabel:"Late aje 2015", accountCode:24200, 
 state.carry.addEntry({ adjNo:31, groupLabel:"IFRS 16 Financial Leases Değerleme", accountCode:24200, debit:405.08, credit:0.0, source:'manual' });
 state.carry.addEntry({ adjNo:31, groupLabel:"IFRS 16 Financial Leases Değerleme", accountCode:27340, debit:0.0, credit:405.08, source:'manual' });
 
-// AJE: gerçek düzeltme kayıtları (Mutlu Akü WTB'sinden, TL bin ölçekli)
+// AJE: gerçek düzeltme kayıtları (ABC WTB'sinden, TL bin ölçekli)
 state.aje.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2024 Expense", accountCode:21510, debit:2426.82, credit:0.0, source:'manual' });
 state.aje.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2024 Expense", accountCode:10430, debit:0.0, credit:2426.82, source:'manual' });
 state.aje.addEntry({ adjNo:2, groupLabel:"Guarantee provision", accountCode:25500, debit:0.0, credit:18925.19, source:'manual' });
@@ -1132,7 +1132,7 @@ state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilme
 state.aje.addEntry({ adjNo:33, groupLabel:"Credit Note Accrual", accountCode:10430, debit:0.0, credit:3316.33, source:'manual' });
 state.aje.addEntry({ adjNo:33, groupLabel:"Credit Note Accrual", accountCode:25700, debit:3316.33, credit:0.0, source:'manual' });
 
-// RJE: gerçek sınıflandırma kayıtları (Mutlu Akü WTB'sinden, TL bin ölçekli)
+// RJE: gerçek sınıflandırma kayıtları (ABC WTB'sinden, TL bin ölçekli)
 state.rje.addEntry({ adjNo:1, groupLabel:"Unrecorded liability", accountCode:21540, debit:32280.83, credit:0.0, source:'manual' });
 state.rje.addEntry({ adjNo:1, groupLabel:"Unrecorded liability", accountCode:21900, debit:0.0, credit:32280.83, source:'manual' });
 state.rje.addEntry({ adjNo:2, groupLabel:"Unrecorded liability (Makineler)", accountCode:20140, debit:25487.2, credit:0.0, source:'manual' });
@@ -2011,7 +2011,7 @@ loadSession();
   try {
     const params = new URLSearchParams(window.location.search);
     if (params.get('demo') === '1' && !currentUser) {
-      currentUser = { name: 'Demo Kullanıcı', company: 'Mutlu Akü A.Ş. (örnek veri)', email: 'demo@tools4finance.com' };
+      currentUser = { name: 'Demo Kullanıcı', company: 'ABC A.Ş. (örnek veri)', email: 'demo@tools4finance.com' };
       state.activeScreen = 'mizan';
     }
   } catch (e) {}
