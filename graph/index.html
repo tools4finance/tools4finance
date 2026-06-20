@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph — Finansal Analiz ve Görselleştirme | tools4finance</title>
+<meta name="description" content="Graph: finansal verinizi etkileşimli panolara dönüştürün. Trend analizi, varyans karşılaştırması ve yönetim raporları tek ekranda.">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F6F8; --bg2: #EAECF0; --bg3: #DCE0E8;
+  --surface: #FFFFFF; --border: rgba(20,30,55,0.08); --border-strong: rgba(20,30,55,0.15);
+  --text: #161B2E; --text2: #545B72; --text3: #9499AC;
+  --accent: #2E3A8C; --accent-text: #FFFFFF;
+  --green: #14805E; --green-bg: #DFF1E9;
+  --amber: #92620C; --amber-bg: #F8EAD3;
+  --blue: #2E3A8C; --blue-bg: #E5E7F8;
+  --purple: #5E4B9E; --purple-bg: #ECE6F8;
+  --coral: #A14438; --coral-bg: #F7E5E2;
+}
+[data-theme="dark"] {
+  --bg: #10131F; --bg2: #161A2B; --bg3: #1F2438;
+  --surface: #141828; --border: rgba(225,228,240,0.08); --border-strong: rgba(225,228,240,0.15);
+  --text: #E7E9F5; --text2: #9DA2BC; --text3: #5F6480;
+  --accent: #8C97FF; --accent-text: #10131F;
+  --green: #59CDA3; --green-bg: #11302A;
+  --amber: #E3B25C; --amber-bg: #362708;
+  --blue: #8C97FF; --blue-bg: #1C2150;
+  --purple: #B5A0EC; --purple-bg: #2A2050;
+  --coral: #E0897A; --coral-bg: #3A1F1A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; transition: background .25s, color .25s; }
+a { color: inherit; text-decoration: none; }
+nav { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 0 40px; display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.nav-logo { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.nav-logo svg { width: 16px; height: 16px; }
+.nav-name { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
+.nav-links { display: flex; align-items: center; gap: 24px; }
+.nav-links a.nav-link { font-size: 13px; color: var(--text2); }
+.nav-links a.nav-link:hover { color: var(--text); }
+.lang-toggle { display: flex; border: 0.5px solid var(--border-strong); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.lang-btn { padding: 4px 9px; font-size: 11px; color: var(--text2); background: var(--surface); border: none; cursor: pointer; font-family: 'DM Mono', monospace; }
+.lang-btn.active { background: var(--accent); color: var(--accent-text); }
+.theme-toggle { width: 36px; height: 20px; background: var(--bg3); border-radius: 10px; border: 0.5px solid var(--border-strong); cursor: pointer; position: relative; flex-shrink: 0; }
+.theme-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text); border-radius: 50%; transition: transform 0.2s; }
+[data-theme="dark"] .theme-toggle::after { transform: translateX(16px); }
+
+.hero { padding: 100px 40px 60px; max-width: 720px; margin: 0 auto; text-align: center; }
+.hero-icon { width: 56px; height: 56px; border-radius: 14px; background: var(--coral-bg); color: var(--coral); display: flex; align-items: center; justify-content: center; margin: 0 auto 28px; }
+.hero-icon svg { width: 28px; height: 28px; }
+.status-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--coral); background: var(--coral-bg); padding: 5px 12px; border-radius: 20px; margin-bottom: 24px; }
+.hero-title { font-size: clamp(30px, 4.5vw, 44px); font-weight: 300; letter-spacing: -0.03em; line-height: 1.15; color: var(--text); margin-bottom: 20px; }
+.hero-sub { font-size: 15px; color: var(--text2); max-width: 520px; margin: 0 auto 32px; line-height: 1.7; }
+
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; max-width: 720px; margin: 0 auto 50px; }
+.feature-cell { background: var(--surface); padding: 24px 20px; text-align: left; }
+.feature-icon { width: 28px; height: 28px; color: var(--coral); margin-bottom: 12px; }
+.feature-icon svg { width: 100%; height: 100%; }
+.feature-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.feature-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+.notify-section { max-width: 480px; margin: 0 auto 100px; text-align: center; padding: 0 20px; }
+.notify-form { display: flex; gap: 8px; margin-top: 20px; }
+.notify-input { flex: 1; padding: 10px 14px; border: 0.5px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 14px; }
+.notify-input:focus { outline: none; border-color: var(--text2); }
+.notify-btn { padding: 10px 20px; background: var(--accent); color: var(--accent-text); border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; white-space: nowrap; }
+.notify-btn:hover { opacity: 0.85; }
+.notify-success { display: none; font-size: 13px; color: var(--green); margin-top: 14px; }
+.notify-success.show { display: block; }
+
+footer { border-top: 0.5px solid var(--border); padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; max-width: 920px; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+.footer-left { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.footer-links { display: flex; gap: 18px; }
+.footer-links a { font-size: 12px; color: var(--text3); }
+.footer-links a:hover { color: var(--text2); }
+
+@media (max-width: 640px) {
+  nav { padding: 0 16px; gap: 8px; } .nav-link { display: none; }
+  .hero { padding: 60px 20px 40px; }
+  .features { grid-template-columns: 1fr; }
+  .notify-form { flex-direction: column; }
+  footer { padding: 20px; flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <a href="../index.html" style="display:flex;align-items:center;gap:10px">
+      <div class="nav-logo">
+        <svg viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="2" width="5" height="5" rx="1" fill="white"/>
+          <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+          <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+          <rect x="9" y="9" width="5" height="5" rx="1" fill="white"/>
+        </svg>
+      </div>
+      <span class="nav-name">tools4finance</span>
+    </a>
+    <span style="color:var(--text3);font-size:13px">/</span>
+    <span class="nav-name" style="color:var(--text2);font-weight:400">Graph</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="../pricing.html" data-tr="Fiyatlama" data-en="Pricing">Fiyatlama</a>
+    <a class="nav-link" href="../contact.html" data-tr="İletişim" data-en="Contact">İletişim</a>
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-action="set-lang" data-lang="tr">TR</button>
+      <button class="lang-btn" data-action="set-lang" data-lang="en">EN</button>
+    </div>
+    <button class="theme-toggle" data-action="toggle-theme" aria-label="Tema değiştir"></button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-icon">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 17V9M9 17V3M15 17v-6M3 17h14"/></svg>
+  </div>
+  <div class="status-badge" data-tr="Yakında" data-en="Coming soon">Yakında</div>
+  <h1 class="hero-title" data-tr="Finansal veriniz, görünür hale gelsin." data-en="Make your financial data visible.">Finansal veriniz, görünür hale gelsin.</h1>
+  <p class="hero-sub" data-tr="Graph, mizan ve WTB verinizi anlık panolara dönüştürür. Dönemler arası varyans analizi, trend grafikleri ve yönetim özetleri — hazırlamak için saatler harcamadan." data-en="Graph turns your trial balance and WTB data into live dashboards. Period-over-period variance analysis, trend charts, and management summaries — without hours of prep work.">
+    Graph, mizan ve WTB verinizi anlık panolara dönüştürür. Dönemler arası varyans analizi, trend grafikleri ve yönetim özetleri — hazırlamak için saatler harcamadan.
+  </p>
+</section>
+
+<div class="features">
+  <div class="feature-cell">
+    <div class="feature-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 10l4 4 10-10"/></svg></div>
+    <div class="feature-title" data-tr="Varyans analizi" data-en="Variance analysis">Varyans analizi</div>
+    <div class="feature-desc" data-tr="Bütçe vs gerçekleşen, dönem vs dönem karşılaştırmaları otomatik hesaplanır, sapmalar öne çıkarılır." data-en="Budget vs actual, period vs period comparisons are calculated automatically, with deviations highlighted.">Bütçe vs gerçekleşen, dönem vs dönem karşılaştırmaları otomatik hesaplanır, sapmalar öne çıkarılır.</div>
+  </div>
+  <div class="feature-cell">
+    <div class="feature-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 2v16M2 10h16"/><circle cx="10" cy="10" r="8"/></svg></div>
+    <div class="feature-title" data-tr="Trend grafikleri" data-en="Trend charts">Trend grafikleri</div>
+    <div class="feature-desc" data-tr="Hasılat, gider ve nakit akışı eğilimlerini aylık veya çeyreklik bazda etkileşimli grafiklerle izleyin." data-en="Track revenue, expense, and cash flow trends on a monthly or quarterly basis with interactive charts.">Hasılat, gider ve nakit akışı eğilimlerini aylık veya çeyreklik bazda etkileşimli grafiklerle izleyin.</div>
+  </div>
+  <div class="feature-cell">
+    <div class="feature-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M2 7h16"/></svg></div>
+    <div class="feature-title" data-tr="Yönetim raporları" data-en="Management reports">Yönetim raporları</div>
+    <div class="feature-desc" data-tr="Yönetim kuruluna sunuma hazır, tek tıkla PDF'e aktarılabilen özet panolar oluşturun." data-en="Build board-ready summary dashboards that export to PDF in one click.">Yönetim kuruluna sunuma hazır, tek tıkla PDF'e aktarılabilen özet panolar oluşturun.</div>
+  </div>
+</div>
+
+<section class="notify-section">
+  <div style="font-size:13px;color:var(--text2)" data-tr="Graph yayınlandığında haberdar olmak ister misiniz?" data-en="Want to know when Graph launches?">Graph yayınlandığında haberdar olmak ister misiniz?</div>
+  <form class="notify-form" id="notifyForm">
+    <input class="notify-input" type="email" id="notifyEmail" placeholder="ornek@sirket.com" required>
+    <button class="notify-btn" type="submit" data-tr="Haberdar et" data-en="Notify me">Haberdar et</button>
+  </form>
+  <div class="notify-success" id="notifySuccess" data-tr="Teşekkürler — Graph yayınlandığında size haber vereceğiz." data-en="Thanks — we'll let you know when Graph launches.">Teşekkürler — Graph yayınlandığında size haber vereceğiz.</div>
+</section>
+
+<footer>
+  <span class="footer-left">tools4finance</span>
+  <div class="footer-links">
+    <a href="../pricing.html" data-tr="Fiyatlama" data-en="Pricing">Fiyatlama</a>
+    <a href="../contact.html" data-tr="İletişim" data-en="Contact">İletişim</a>
+  </div>
+</footer>
+
+<script>
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-tr]').forEach(el => {
+    const val = lang === 'en' ? el.dataset.en : el.dataset.tr;
+    if (val !== undefined) el.textContent = val;
+  });
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  try { localStorage.setItem('wtb_lang', lang); } catch (e) {}
+}
+document.querySelectorAll('[data-action="set-lang"]').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+});
+document.querySelector('[data-action="toggle-theme"]').addEventListener('click', () => {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  try { localStorage.setItem('wtb_theme', next); } catch (e) {}
+});
+document.getElementById('notifyForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  document.getElementById('notifySuccess').classList.add('show');
+  document.getElementById('notifyForm').style.display = 'none';
+});
+(function init() {
+  let lang = 'tr', theme = 'light';
+  try {
+    lang = localStorage.getItem('wtb_lang') || 'tr';
+    theme = localStorage.getItem('wtb_theme') || 'light';
+  } catch (e) {}
+  document.documentElement.dataset.theme = theme;
+  applyLang(lang);
+})();
+</script>
+</body>
+</html>

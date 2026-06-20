@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiyatlama | tools4finance</title>
+<meta name="description" content="tools4finance fiyatlama planları: IFRS Reporting, Bridge ve Graph için şeffaf, ekip büyüklüğüne göre ölçeklenen fiyatlandırma.">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F6F8; --bg2: #EAECF0; --bg3: #DCE0E8;
+  --surface: #FFFFFF; --border: rgba(20,30,55,0.08); --border-strong: rgba(20,30,55,0.15);
+  --text: #161B2E; --text2: #545B72; --text3: #9499AC;
+  --accent: #2E3A8C; --accent-text: #FFFFFF;
+  --green: #14805E; --green-bg: #DFF1E9;
+  --amber: #92620C; --amber-bg: #F8EAD3;
+  --blue: #2E3A8C; --blue-bg: #E5E7F8;
+  --purple: #5E4B9E; --purple-bg: #ECE6F8;
+  --coral: #A14438; --coral-bg: #F7E5E2;
+}
+[data-theme="dark"] {
+  --bg: #10131F; --bg2: #161A2B; --bg3: #1F2438;
+  --surface: #141828; --border: rgba(225,228,240,0.08); --border-strong: rgba(225,228,240,0.15);
+  --text: #E7E9F5; --text2: #9DA2BC; --text3: #5F6480;
+  --accent: #8C97FF; --accent-text: #10131F;
+  --green: #59CDA3; --green-bg: #11302A;
+  --amber: #E3B25C; --amber-bg: #362708;
+  --blue: #8C97FF; --blue-bg: #1C2150;
+  --purple: #B5A0EC; --purple-bg: #2A2050;
+  --coral: #E0897A; --coral-bg: #3A1F1A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; transition: background .25s, color .25s; }
+a { color: inherit; text-decoration: none; }
+input, select, button { font-family: 'Inter', sans-serif; }
+
+nav { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 0 40px; display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.nav-logo { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.nav-logo svg { width: 16px; height: 16px; }
+.nav-name { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
+.nav-links { display: flex; align-items: center; gap: 24px; }
+.nav-links a.nav-link { font-size: 13px; color: var(--text2); }
+.nav-links a.nav-link:hover { color: var(--text); }
+.lang-toggle { display: flex; border: 0.5px solid var(--border-strong); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.lang-btn { padding: 4px 9px; font-size: 11px; color: var(--text2); background: var(--surface); border: none; cursor: pointer; font-family: 'DM Mono', monospace; }
+.lang-btn.active { background: var(--accent); color: var(--accent-text); }
+.theme-toggle { width: 36px; height: 20px; background: var(--bg3); border-radius: 10px; border: 0.5px solid var(--border-strong); cursor: pointer; position: relative; flex-shrink: 0; }
+.theme-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text); border-radius: 50%; transition: transform 0.2s; }
+[data-theme="dark"] .theme-toggle::after { transform: translateX(16px); }
+.nav-login-btn { padding: 7px 16px; background: var(--accent); color: var(--accent-text); border-radius: 7px; font-size: 13px; font-weight: 500; }
+
+.hero { padding: 80px 40px 16px; max-width: 720px; margin: 0 auto; text-align: center; }
+.hero-title { font-size: clamp(30px, 4.5vw, 44px); font-weight: 300; letter-spacing: -0.03em; color: var(--text); margin-bottom: 16px; }
+.hero-sub { font-size: 15px; color: var(--text2); max-width: 480px; margin: 0 auto; }
+
+.billing-toggle { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 36px 0 50px; }
+.bt-label { font-size: 13px; color: var(--text2); }
+.bt-label.active { color: var(--text); font-weight: 500; }
+.bt-switch { width: 40px; height: 22px; background: var(--bg3); border-radius: 11px; border: 0.5px solid var(--border-strong); cursor: pointer; position: relative; }
+.bt-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--accent); border-radius: 50%; transition: transform 0.2s; }
+.bt-switch.yearly::after { transform: translateX(18px); }
+.bt-save { font-size: 11px; color: var(--green); background: var(--green-bg); padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+
+.plans-section { padding: 0 40px 90px; max-width: 980px; margin: 0 auto; }
+.plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch; }
+.plan-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; padding: 28px 24px; display: flex; flex-direction: column; }
+.plan-card.featured { border-color: var(--text); border-width: 1px; position: relative; }
+.plan-badge { position: absolute; top: -11px; left: 24px; background: var(--accent); color: var(--accent-text); font-size: 10px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+.plan-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.plan-desc { font-size: 12px; color: var(--text2); margin-bottom: 20px; min-height: 32px; }
+.plan-price { font-size: 32px; font-weight: 300; color: var(--text); font-family: 'DM Mono', monospace; margin-bottom: 2px; }
+.plan-price span { font-size: 13px; color: var(--text3); font-family: 'Inter', sans-serif; }
+.plan-period { font-size: 12px; color: var(--text3); margin-bottom: 24px; }
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; flex: 1; }
+.plan-features li { font-size: 13px; color: var(--text2); display: flex; align-items: flex-start; gap: 8px; }
+.plan-features li::before { content: '✓'; color: var(--green); font-weight: 500; flex-shrink: 0; }
+.plan-btn { padding: 10px; text-align: center; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border-strong); background: var(--surface); color: var(--text); }
+.plan-btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.plan-btn:hover { opacity: 0.85; }
+
+.faq-note { max-width: 600px; margin: 0 auto 90px; text-align: center; padding: 0 20px; }
+.faq-note p { font-size: 13px; color: var(--text2); }
+.faq-note a { color: var(--blue); text-decoration: underline; }
+
+footer { border-top: 0.5px solid var(--border); padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; max-width: 920px; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+.footer-left { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.footer-links { display: flex; gap: 18px; }
+.footer-links a { font-size: 12px; color: var(--text3); }
+.footer-links a:hover { color: var(--text2); }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+.modal-overlay.show { display: flex; }
+.modal-card { background: var(--surface); border-radius: 14px; max-width: 420px; width: 100%; padding: 28px; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.modal-title { font-size: 16px; font-weight: 500; color: var(--text); }
+.modal-close { cursor: pointer; color: var(--text3); font-size: 18px; background: none; border: none; }
+.modal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+.modal-row.total { font-weight: 500; font-size: 14px; border-bottom: none; padding-top: 14px; }
+.pay-field { margin: 14px 0; }
+.pay-field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 5px; }
+.pay-field input { width: 100%; padding: 9px 11px; border: 0.5px solid var(--border-strong); border-radius: 7px; background: var(--bg); color: var(--text); font-size: 13px; }
+.pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pay-submit { width: 100%; padding: 11px; background: var(--accent); color: var(--accent-text); border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 18px; }
+.pay-submit:hover { opacity: 0.85; }
+.pay-security { font-size: 11px; color: var(--text3); text-align: center; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.pay-note { font-size: 11px; color: var(--text3); background: var(--bg2); padding: 8px 11px; border-radius: 7px; margin-top: 14px; }
+
+@media (max-width: 720px) {
+  nav { padding: 0 16px; gap: 8px; } .nav-link { display: none; }
+  .hero { padding: 56px 20px 16px; }
+  .plans-section { padding: 0 20px 60px; }
+  .plans-grid { grid-template-columns: 1fr; }
+  .pay-row { grid-template-columns: 1fr; }
+  footer { padding: 20px; flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <a href="index.html" style="display:flex;align-items:center;gap:10px">
+      <div class="nav-logo">
+        <svg viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="2" width="5" height="5" rx="1" fill="white"/>
+          <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+          <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+          <rect x="9" y="9" width="5" height="5" rx="1" fill="white"/>
+        </svg>
+      </div>
+      <span class="nav-name">tools4finance</span>
+    </a>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="contact.html" data-tr="İletişim" data-en="Contact">İletişim</a>
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-action="set-lang" data-lang="tr">TR</button>
+      <button class="lang-btn" data-action="set-lang" data-lang="en">EN</button>
+    </div>
+    <button class="theme-toggle" data-action="toggle-theme" aria-label="Tema değiştir"></button>
+    <a class="nav-login-btn" href="ifrs/app.html" data-tr="Giriş yap" data-en="Sign in">Giriş yap</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <h1 class="hero-title" data-tr="Şeffaf fiyatlama." data-en="Transparent pricing.">Şeffaf fiyatlama.</h1>
+  <p class="hero-sub" data-tr="Ekip büyüklüğünüze göre ölçeklenir. Gizli ücret yok." data-en="Scales with your team size. No hidden fees.">Ekip büyüklüğünüze göre ölçeklenir. Gizli ücret yok.</p>
+</section>
+
+<div class="billing-toggle">
+  <span class="bt-label active" data-tr="Aylık" data-en="Monthly" id="monthlyLabel">Aylık</span>
+  <button class="bt-switch" id="billingSwitch" aria-label="Faturalama periyodu"></button>
+  <span class="bt-label" data-tr="Yıllık" data-en="Yearly" id="yearlyLabel">Yıllık</span>
+  <span class="bt-save" data-tr="%20 indirim" data-en="Save 20%">%20 indirim</span>
+</div>
+
+<section class="plans-section">
+  <div class="plans-grid">
+    <div class="plan-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-desc" data-tr="Tek şirket, küçük finans ekipleri için" data-en="Single company, for small finance teams">Tek şirket, küçük finans ekipleri için</div>
+      <div class="plan-price" data-monthly="₺4.900" data-yearly="₺3.920">₺4.900<span>/ay</span></div>
+      <div class="plan-period" data-tr="kullanıcı başına, aylık faturalanır" data-en="per user, billed monthly">kullanıcı başına, aylık faturalanır</div>
+      <ul class="plan-features">
+        <li data-tr="1 şirket profili" data-en="1 company profile">1 şirket profili</li>
+        <li data-tr="IFRS Reporting — tam erişim" data-en="IFRS Reporting — full access">IFRS Reporting — tam erişim</li>
+        <li data-tr="Sınırsız mizan yükleme" data-en="Unlimited trial balance uploads">Sınırsız mizan yükleme</li>
+        <li data-tr="Excel + PDF export" data-en="Excel + PDF export">Excel + PDF export</li>
+        <li data-tr="E-posta destek" data-en="Email support">E-posta destek</li>
+      </ul>
+      <button class="plan-btn" data-action="open-checkout" data-plan="Starter">Başla</button>
+    </div>
+
+    <div class="plan-card featured">
+      <div class="plan-badge" data-tr="En popüler" data-en="Most popular">En popüler</div>
+      <div class="plan-name">Professional</div>
+      <div class="plan-desc" data-tr="Çoklu şirket, denetim destekli ekipler için" data-en="Multi-company, for teams needing audit support">Çoklu şirket, denetim destekli ekipler için</div>
+      <div class="plan-price" data-monthly="₺9.900" data-yearly="₺7.920">₺9.900<span>/ay</span></div>
+      <div class="plan-period" data-tr="kullanıcı başına, aylık faturalanır" data-en="per user, billed monthly">kullanıcı başına, aylık faturalanır</div>
+      <ul class="plan-features">
+        <li data-tr="5 şirket profiline kadar" data-en="Up to 5 company profiles">5 şirket profiline kadar</li>
+        <li data-tr="IFRS Reporting — tam erişim" data-en="IFRS Reporting — full access">IFRS Reporting — tam erişim</li>
+        <li data-tr="Bridge — erken erişim" data-en="Bridge — early access">Bridge — erken erişim</li>
+        <li data-tr="Çoklu kullanıcı + roller" data-en="Multi-user + roles">Çoklu kullanıcı + roller</li>
+        <li data-tr="Öncelikli destek" data-en="Priority support">Öncelikli destek</li>
+      </ul>
+      <button class="plan-btn primary" data-action="open-checkout" data-plan="Professional">Başla</button>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-desc" data-tr="Çok şirketli gruplar ve denetim firmaları için" data-en="For multi-entity groups and audit firms">Çok şirketli gruplar ve denetim firmaları için</div>
+      <div class="plan-price" data-tr="Özel" data-en="Custom">Özel</div>
+      <div class="plan-period" data-tr="ihtiyaca göre fiyatlandırılır" data-en="priced to your needs">ihtiyaca göre fiyatlandırılır</div>
+      <ul class="plan-features">
+        <li data-tr="Sınırsız şirket profili" data-en="Unlimited company profiles">Sınırsız şirket profili</li>
+        <li data-tr="Tüm ürünlere erişim" data-en="Access to all products">Tüm ürünlere erişim</li>
+        <li data-tr="SSO ve özel entegrasyonlar" data-en="SSO and custom integrations">SSO ve özel entegrasyonlar</li>
+        <li data-tr="Özel SLA" data-en="Custom SLA">Özel SLA</li>
+        <li data-tr="Atanmış müşteri temsilcisi" data-en="Dedicated account manager">Atanmış müşteri temsilcisi</li>
+      </ul>
+      <button class="plan-btn" data-action="contact-sales">Satış ile görüş</button>
+    </div>
+  </div>
+</section>
+
+<div class="faq-note">
+  <p data-tr="Sorularınız mı var? " data-en="Have questions? ">Sorularınız mı var? <a href="contact.html" data-tr="İletişim ekibimizle konuşun" data-en="Talk to our team">İletişim ekibimizle konuşun</a></p>
+</div>
+
+<footer>
+  <span class="footer-left">tools4finance</span>
+  <div class="footer-links">
+    <a href="contact.html" data-tr="İletişim" data-en="Contact">İletişim</a>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="checkoutModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title" data-tr="Ödeme bilgileri" data-en="Payment details">Ödeme bilgileri</span>
+      <button class="modal-close" data-action="close-checkout" aria-label="Kapat">✕</button>
+    </div>
+    <div class="modal-row"><span id="checkoutPlanLabel" data-tr="Plan" data-en="Plan">Plan</span><span id="checkoutPlanName">—</span></div>
+    <div class="modal-row total"><span data-tr="Toplam (bugün)" data-en="Total (today)">Toplam (bugün)</span><span id="checkoutTotal">—</span></div>
+    <form id="payForm">
+      <div class="pay-field">
+        <label data-tr="Kart üzerindeki isim" data-en="Name on card">Kart üzerindeki isim</label>
+        <input type="text" placeholder="Ahmet Yılmaz" required>
+      </div>
+      <div class="pay-field">
+        <label data-tr="Kart numarası" data-en="Card number">Kart numarası</label>
+        <input type="text" placeholder="4242 4242 4242 4242" required>
+      </div>
+      <div class="pay-row">
+        <div class="pay-field">
+          <label data-tr="Son kullanma" data-en="Expiry">Son kullanma</label>
+          <input type="text" placeholder="MM/YY" required>
+        </div>
+        <div class="pay-field">
+          <label>CVC</label>
+          <input type="text" placeholder="123" required>
+        </div>
+      </div>
+      <button type="submit" class="pay-submit" data-tr="Ödemeyi tamamla" data-en="Complete payment">Ödemeyi tamamla</button>
+    </form>
+    <div class="pay-security" data-tr="🔒 Bu bir demo formdur, gerçek ödeme alınmaz" data-en="🔒 This is a demo form — no real payment is processed">🔒 Bu bir demo formdur, gerçek ödeme alınmaz</div>
+    <div class="pay-note" data-tr="Ödeme altyapısı entegrasyonu (Stripe / iyzico) yakında eklenecek. Fatura kesim süreci için ayrıca görüşeceğiz." data-en="Payment infrastructure integration (Stripe / iyzico) is coming soon. We'll discuss the invoicing process separately.">Ödeme altyapısı entegrasyonu (Stripe / iyzico) yakında eklenecek. Fatura kesim süreci için ayrıca görüşeceğiz.</div>
+  </div>
+</div>
+
+<script>
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-tr]').forEach(el => {
+    const val = lang === 'en' ? el.dataset.en : el.dataset.tr;
+    if (val !== undefined && !el.querySelector('span')) el.textContent = val;
+    else if (val !== undefined && el.tagName === 'P') {
+      const link = el.querySelector('a');
+      el.textContent = val;
+      if (link) el.appendChild(link);
+    }
+  });
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  updateBillingLabels(lang);
+  try { localStorage.setItem('wtb_lang', lang); } catch (e) {}
+}
+function updateBillingLabels(lang) {
+  document.getElementById('monthlyLabel').textContent = lang === 'en' ? 'Monthly' : 'Aylık';
+  document.getElementById('yearlyLabel').textContent = lang === 'en' ? 'Yearly' : 'Yıllık';
+}
+document.querySelectorAll('[data-action="set-lang"]').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+});
+document.querySelector('[data-action="toggle-theme"]').addEventListener('click', () => {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  try { localStorage.setItem('wtb_theme', next); } catch (e) {}
+});
+
+let yearly = false;
+document.getElementById('billingSwitch').addEventListener('click', () => {
+  yearly = !yearly;
+  document.getElementById('billingSwitch').classList.toggle('yearly', yearly);
+  document.getElementById('monthlyLabel').classList.toggle('active', !yearly);
+  document.getElementById('yearlyLabel').classList.toggle('active', yearly);
+  document.querySelectorAll('.plan-price[data-monthly]').forEach(el => {
+    const val = yearly ? el.dataset.yearly : el.dataset.monthly;
+    el.childNodes[0].textContent = val;
+  });
+});
+
+document.querySelectorAll('[data-action="open-checkout"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const plan = btn.dataset.plan;
+    const priceEl = btn.closest('.plan-card').querySelector('.plan-price');
+    const price = yearly ? priceEl.dataset.yearly : priceEl.dataset.monthly;
+    document.getElementById('checkoutPlanName').textContent = plan + (yearly ? ' (Yıllık)' : ' (Aylık)');
+    document.getElementById('checkoutTotal').textContent = price + '/ay';
+    document.getElementById('checkoutModal').classList.add('show');
+  });
+});
+document.querySelector('[data-action="close-checkout"]').addEventListener('click', () => {
+  document.getElementById('checkoutModal').classList.remove('show');
+});
+document.getElementById('checkoutModal').addEventListener('click', (ev) => {
+  if (ev.target.id === 'checkoutModal') ev.currentTarget.classList.remove('show');
+});
+document.getElementById('payForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  alert('Bu bir demo ödeme formudur — gerçek ödeme altyapısı entegrasyonu sırasında bu akış değişecek.');
+});
+document.querySelector('[data-action="contact-sales"]').addEventListener('click', () => {
+  window.location.href = 'contact.html';
+});
+
+(function init() {
+  let lang = 'tr', theme = 'light';
+  try {
+    lang = localStorage.getItem('wtb_lang') || 'tr';
+    theme = localStorage.getItem('wtb_theme') || 'light';
+  } catch (e) {}
+  document.documentElement.dataset.theme = theme;
+  applyLang(lang);
+})();
+</script>
+</body>
+</html>

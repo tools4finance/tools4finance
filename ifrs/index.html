@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IFRS Workbench — VUK Mizandan IFRS Finansal Tablolara | WTB Platformu</title>
+<meta name="description" content="IFRS Workbench: mizan, sabit kıymet ve aktüeryal verilerinizi yükleyin; AJE, RJE, Carry ve ertelenmiş vergi otomatik hesaplansın. PwC formatında Working Trial Balance, Excel ve PDF çıktısı.">
+<meta name="keywords" content="IFRS, WTB, working trial balance, mizan, AJE, RJE, ertelenmiş vergi, deferred tax, finansal raporlama, IAS 16, IAS 19, TFRS">
+<link rel="canonical" href="https://ifrsworkbench.example.com/">
+<meta property="og:title" content="IFRS Workbench — IFRS Raporlama Platformu">
+<meta property="og:description" content="VUK mizanından IFRS finansal tablolara tek iş akışı. AJE/RJE otomasyonu, ertelenmiş vergi, PwC formatında WTB.">
+<meta property="og:type" content="website">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F6F8; --bg2: #EAECF0; --bg3: #DCE0E8;
+  --surface: #FFFFFF; --border: rgba(20,30,55,0.08); --border-strong: rgba(20,30,55,0.15);
+  --text: #161B2E; --text2: #545B72; --text3: #9499AC;
+  --accent: #2E3A8C; --accent-text: #FFFFFF;
+  --green: #14805E; --green-bg: #DFF1E9;
+  --amber: #92620C; --amber-bg: #F8EAD3;
+  --blue: #2E3A8C; --blue-bg: #E5E7F8;
+  --purple: #5E4B9E; --purple-bg: #ECE6F8;
+  --coral: #A14438; --coral-bg: #F7E5E2;
+}
+[data-theme="dark"] {
+  --bg: #10131F; --bg2: #161A2B; --bg3: #1F2438;
+  --surface: #141828; --border: rgba(225,228,240,0.08); --border-strong: rgba(225,228,240,0.15);
+  --text: #E7E9F5; --text2: #9DA2BC; --text3: #5F6480;
+  --accent: #8C97FF; --accent-text: #10131F;
+  --green: #59CDA3; --green-bg: #11302A;
+  --amber: #E3B25C; --amber-bg: #362708;
+  --blue: #8C97FF; --blue-bg: #1C2150;
+  --purple: #B5A0EC; --purple-bg: #2A2050;
+  --coral: #E0897A; --coral-bg: #3A1F1A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 15px; line-height: 1.6;
+  transition: background 0.25s, color 0.25s;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+
+/* NAV */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg);
+  border-bottom: 0.5px solid var(--border);
+  padding: 0 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.nav-logo { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.nav-logo svg { width: 16px; height: 16px; }
+.nav-name { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
+.nav-links { display: flex; align-items: center; gap: 24px; }
+.nav-links a.nav-link { font-size: 13px; color: var(--text2); }
+.nav-links a.nav-link:hover { color: var(--text); }
+.lang-toggle { display: flex; border: 0.5px solid var(--border-strong); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.lang-btn { padding: 4px 9px; font-size: 11px; color: var(--text2); background: var(--surface); border: none; cursor: pointer; font-family: 'DM Mono', monospace; }
+.lang-btn.active { background: var(--accent); color: var(--accent-text); }
+.theme-toggle { width: 36px; height: 20px; background: var(--bg3); border-radius: 10px; border: 0.5px solid var(--border-strong); cursor: pointer; position: relative; flex-shrink: 0; }
+.theme-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text); border-radius: 50%; transition: transform 0.2s; }
+[data-theme="dark"] .theme-toggle::after { transform: translateX(16px); }
+.nav-login-btn { padding: 7px 16px; background: var(--accent); color: var(--accent-text); border-radius: 7px; font-size: 13px; font-weight: 500; }
+.nav-login-btn:hover { opacity: 0.85; }
+
+/* HERO */
+.hero { padding: 100px 40px 80px; max-width: 820px; margin: 0 auto; }
+.hero-eyebrow { display: flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: var(--text3); text-transform: uppercase; margin-bottom: 28px; white-space: nowrap; }
+.hero-eyebrow span { display: inline-block; width: 16px; height: 1px; background: var(--text3); }
+.hero-title { font-size: clamp(36px, 5vw, 58px); font-weight: 300; letter-spacing: -0.03em; line-height: 1.1; color: var(--text); margin-bottom: 24px; }
+.hero-title em { font-style: normal; font-weight: 500; }
+.hero-sub { font-size: 17px; color: var(--text2); max-width: 540px; line-height: 1.7; margin-bottom: 40px; }
+.hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hero-demo-note { font-size: 12px; color: var(--text3); margin-top: 14px; }
+.btn-primary { padding: 10px 22px; background: var(--accent); color: var(--accent-text); border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: opacity 0.15s; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-outline { padding: 10px 22px; background: transparent; color: var(--text); border-radius: 8px; font-size: 14px; border: 0.5px solid var(--border-strong); cursor: pointer; transition: background 0.15s; }
+.btn-outline:hover { background: var(--bg2); }
+
+/* METRICS */
+.metrics { border-top: 0.5px solid var(--border); border-bottom: 0.5px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); max-width: 820px; margin: 0 auto; }
+.metric { padding: 28px 40px; border-right: 0.5px solid var(--border); }
+.metric:last-child { border-right: none; }
+.metric-num { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); margin-bottom: 4px; }
+.metric-label { font-size: 12px; color: var(--text3); }
+
+/* GENERIC SECTION */
+.section { padding: 80px 40px; max-width: 820px; margin: 0 auto; }
+.section-eyebrow { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 16px; }
+.section h2 { font-size: 26px; font-weight: 300; letter-spacing: -0.02em; color: var(--text); margin-bottom: 10px; }
+.section > p.section-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; max-width: 560px; }
+
+/* FLOW GRID */
+.flow-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; }
+.flow-cell { background: var(--surface); padding: 26px 22px; transition: background 0.15s; }
+.flow-cell:hover { background: var(--bg2); }
+.flow-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); margin-bottom: 14px; }
+.flow-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 8px; letter-spacing: -0.01em; }
+.flow-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+/* SHEET LIST */
+.sheet-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; }
+.sheet-row { display: grid; grid-template-columns: 28px 120px 1fr auto; align-items: center; gap: 16px; padding: 13px 20px; background: var(--surface); transition: background 0.12s; }
+.sheet-row:hover { background: var(--bg2); }
+.sheet-index { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); text-align: right; }
+.sheet-name { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text); }
+.sheet-desc { font-size: 12px; color: var(--text2); }
+.sheet-badge { font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.badge-auto { background: var(--green-bg); color: var(--green); }
+.badge-manual { background: var(--amber-bg); color: var(--amber); }
+.badge-locked { background: var(--bg3); color: var(--text3); }
+
+/* RULES GRID */
+.rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; }
+.rule-card { background: var(--surface); padding: 20px 22px; }
+.rule-icon { font-size: 18px; margin-bottom: 10px; }
+.rule-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.rule-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+/* PREVIEW */
+.preview-tabs { display: flex; gap: 0; border-bottom: 0.5px solid var(--border); }
+.ptab { font-size: 12px; padding: 8px 16px; color: var(--text3); cursor: pointer; border-bottom: 1.5px solid transparent; transition: color 0.15s; }
+.ptab.active { color: var(--text); border-bottom-color: var(--text); }
+.ptab:hover:not(.active) { color: var(--text2); }
+.preview-panel { display: none; background: var(--surface); border: 0.5px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; }
+.preview-panel.active { display: block; }
+.mini-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.mini-table th { background: var(--bg2); padding: 8px 12px; text-align: right; font-weight: 500; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 10px; border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+.mini-table th:first-child, .mini-table th:nth-child(2) { text-align: left; }
+.mini-table td { padding: 7px 12px; text-align: right; border-bottom: 0.5px solid var(--border); color: var(--text); font-variant-numeric: tabular-nums; }
+.mini-table td:first-child, .mini-table td:nth-child(2) { text-align: left; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 10px; }
+.mini-table .sec td { background: var(--bg2); font-weight: 500; font-size: 10px; color: var(--text2); }
+.mini-table .tot td { background: var(--bg2); font-weight: 500; border-top: 0.5px solid var(--border-strong); }
+.mini-table .adj { color: var(--blue); font-family: 'DM Mono', monospace; font-size: 10px; }
+.mini-table .neg { color: #A32D2D; }
+[data-theme="dark"] .mini-table .neg { color: #F09595; }
+.mini-table .pos { color: var(--green); }
+.mini-table .lock { font-size: 9px; color: var(--text3); margin-left: 4px; }
+.table-note { padding: 10px 14px; font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; border-top: 0.5px solid var(--border); display: flex; gap: 20px; flex-wrap: wrap; }
+
+/* FAQ (SEO content) */
+.faq-item { border-bottom: 0.5px solid var(--border); padding: 18px 0; }
+.faq-item:last-child { border-bottom: none; }
+.faq-q { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+.faq-a { font-size: 13px; color: var(--text2); line-height: 1.7; }
+
+/* CTA */
+.cta-section { padding: 80px 40px; border-top: 0.5px solid var(--border); max-width: 820px; margin: 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+.cta-text h2 { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; color: var(--text); margin-bottom: 10px; }
+.cta-text p { font-size: 14px; color: var(--text2); }
+.cta-actions { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; align-items: flex-end; }
+
+/* FOOTER */
+footer { border-top: 0.5px solid var(--border); padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; max-width: 820px; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+.footer-left { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.footer-right { font-size: 12px; color: var(--text3); }
+
+@media (max-width: 640px) {
+  nav { padding: 0 16px; gap: 8px; }
+  .nav-links { gap: 10px; }
+  .nav-link { display: none; }
+  .hero { padding: 60px 20px 50px; }
+  .hero-title { font-size: 32px; }
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .metric { padding: 20px; }
+  .section { padding: 60px 20px; }
+  .flow-grid { grid-template-columns: 1fr; }
+  .rules-grid { grid-template-columns: 1fr; }
+  .sheet-row { grid-template-columns: 22px 90px 1fr; }
+  .sheet-badge { display: none; }
+  .cta-section { flex-direction: column; padding: 60px 20px; }
+  .cta-actions { align-items: flex-start; }
+  footer { padding: 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <a href="../index.html" style="display:flex;align-items:center;gap:10px">
+      <div class="nav-logo">
+        <svg viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="2" width="5" height="5" rx="1" fill="white"/>
+          <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+          <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+          <rect x="9" y="9" width="5" height="5" rx="1" fill="white"/>
+        </svg>
+      </div>
+      <span class="nav-name">tools4finance</span>
+    </a>
+    <span style="color:var(--text3);font-size:13px">/</span>
+    <span class="nav-name" style="color:var(--text2);font-weight:400">IFRS Reporting</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="#akis" data-tr="İş akışı" data-en="Workflow">İş akışı</a>
+    <a class="nav-link" href="#onizleme" data-tr="Önizleme" data-en="Preview">Önizleme</a>
+    <a class="nav-link" href="../pricing.html" data-tr="Fiyatlama" data-en="Pricing">Fiyatlama</a>
+    <a class="nav-link" href="../contact.html" data-tr="İletişim" data-en="Contact">İletişim</a>
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-action="set-lang" data-lang="tr">TR</button>
+      <button class="lang-btn" data-action="set-lang" data-lang="en">EN</button>
+    </div>
+    <button class="theme-toggle" data-action="toggle-theme" aria-label="Tema değiştir"></button>
+    <a class="nav-login-btn" href="app.html" data-tr="Giriş yap" data-en="Sign in">Giriş yap</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> <span data-tr="IFRS Raporlama Platformu" data-en="IFRS Reporting Platform">IFRS Raporlama Platformu</span></div>
+  <h1 class="hero-title" data-tr-html="VUK mizanından<br><em>IFRS finansal tablolara</em><br>tek iş akışı." data-en-html="From statutory trial balance<br>to <em>IFRS financial statements</em><br>in one workflow.">
+    VUK mizanından<br>
+    <em>IFRS finansal tablolara</em><br>
+    tek iş akışı.
+  </h1>
+  <p class="hero-sub" data-tr="Mizan yapıştır, hesap mapping'ini bir kez tamamla. Sistem sabit kıymet amortismanını, AJE/RJE'leri ve ertelenmiş vergiyi otomatik hesaplayıp kilitler — sen sadece manuel düzeltmelere odaklan." data-en="Paste your trial balance, complete account mapping once. The system automatically calculates fixed asset depreciation, AJE/RJE entries, and deferred tax — you focus only on manual adjustments.">
+    Mizan yapıştır, hesap mapping'ini bir kez tamamla. Sistem sabit kıymet amortismanını, AJE/RJE'leri ve ertelenmiş vergiyi otomatik hesaplayıp kilitler — sen sadece manuel düzeltmelere odaklan.
+  </p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="app.html" data-tr="Ücretsiz başla" data-en="Get started free">Ücretsiz başla</a>
+    <a class="btn-outline" href="app.html?demo=1" data-tr="Demoyu incele ↗" data-en="Check demo ↗">Demoyu incele ↗</a>
+  </div>
+  <div class="hero-demo-note" data-tr="Demo, gerçek bir şirketin (Mutlu Akü A.Ş.) anonimleştirilmiş WTB verisiyle çalışır" data-en="The demo runs on anonymized WTB data from a real company (Mutlu Akü A.Ş.)">
+    Demo, gerçek bir şirketin (Mutlu Akü A.Ş.) anonimleştirilmiş WTB verisiyle çalışır
+  </div>
+</section>
+
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-num">9</div>
+    <div class="metric-label" data-tr="Excel sekmesi" data-en="Excel sheets">Excel sekmesi</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num">IAS&nbsp;16</div>
+    <div class="metric-label" data-tr="Gün bazlı amortisman" data-en="Day-count depreciation">Gün bazlı amortisman</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num">CY+PY</div>
+    <div class="metric-label" data-tr="Karşılaştırmalı dönem" data-en="Comparative period">Karşılaştırmalı dönem</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num">PDF+XLS</div>
+    <div class="metric-label" data-tr="Export formatları" data-en="Export formats">Export formatları</div>
+  </div>
+</div>
+
+<section class="section" id="akis">
+  <div class="section-eyebrow" data-tr="İş akışı" data-en="Workflow">İş akışı</div>
+  <h2 data-tr="Altı adımda mizan, IFRS finansal tabloya dönüşür" data-en="Six steps from trial balance to IFRS statements">Altı adımda mizan, IFRS finansal tabloya dönüşür</h2>
+  <div class="flow-grid">
+    <div class="flow-cell">
+      <div class="flow-num">01</div>
+      <div class="flow-title" data-tr="Veri girişi" data-en="Data input">Veri girişi</div>
+      <div class="flow-desc" data-tr="Mizan (CY + PY), sabit kıymet listesi, stoklar ve ETB aktüeryal sonucunu yapıştır veya yükle." data-en="Paste or upload your trial balance (CY + PY), fixed asset register, inventory, and actuarial (EOSB) results.">Mizan (CY + PY), sabit kıymet listesi, stoklar ve ETB aktüeryal sonucunu yapıştır veya yükle.</div>
+    </div>
+    <div class="flow-cell">
+      <div class="flow-num">02</div>
+      <div class="flow-title" data-tr="Hesap eşleştirme" data-en="Account mapping">Hesap eşleştirme</div>
+      <div class="flow-desc" data-tr="Her hesap kodunu IFRS satırına, tablosuna ve dipnotuna eşleştir. Bir kez yapılır, dönemden döneme taşınır." data-en="Map each account code to its IFRS line, statement, and footnote once. It carries forward automatically every period.">Her hesap kodunu IFRS satırına, tablosuna ve dipnotuna eşleştir. Bir kez yapılır, dönemden döneme taşınır.</div>
+    </div>
+    <div class="flow-cell">
+      <div class="flow-num">03</div>
+      <div class="flow-title" data-tr="FA schedule" data-en="FA schedule">FA schedule</div>
+      <div class="flow-desc" data-tr="Sistem IAS 16 kapsamında gün bazlı amortisman hesaplayıp VUK farkını otomatik AJE olarak üretir." data-en="The system calculates day-count depreciation under IAS 16 and posts the statutory difference as an automatic AJE.">Sistem IAS 16 kapsamında gün bazlı amortisman hesaplayıp VUK farkını otomatik AJE olarak üretir.</div>
+    </div>
+    <div class="flow-cell">
+      <div class="flow-num">04</div>
+      <div class="flow-title" data-tr="AJE / RJE" data-en="AJE / RJE">AJE / RJE</div>
+      <div class="flow-desc" data-tr="Formülle gelen kayıtlar kilitli, manuel AJE ve RJE ayrı alanlarda serbest. Hesap kodu yazarken otomatik tamamlama yardımcı olur." data-en="Formula-driven entries are locked; manual AJE and RJE stay freely editable. Autocomplete helps you find accounts by code or name.">Formülle gelen kayıtlar kilitli, manuel AJE ve RJE ayrı alanlarda serbest. Hesap kodu yazarken otomatik tamamlama yardımcı olur.</div>
+    </div>
+    <div class="flow-cell">
+      <div class="flow-num">05</div>
+      <div class="flow-title" data-tr="Ertelenmiş vergi" data-en="Deferred tax">Ertelenmiş vergi</div>
+      <div class="flow-desc" data-tr="Geçici farklar WTB'den otomatik hesaplanır. DTA / DTL ayrımı, vergi oranı dilediğin an güncellenebilir." data-en="Temporary differences are calculated automatically from the WTB. DTA / DTL classification and tax rate are editable anytime.">Geçici farklar WTB'den otomatik hesaplanır. DTA / DTL ayrımı, vergi oranı dilediğin an güncellenebilir.</div>
+    </div>
+    <div class="flow-cell">
+      <div class="flow-num">06</div>
+      <div class="flow-title" data-tr="Export" data-en="Export">Export</div>
+      <div class="flow-desc" data-tr="Bilanço, kapsamlı gelir tablosu ve WTB lead schedule — PwC formatında PDF ve çok sekmeli Excel olarak indir." data-en="Balance sheet, statement of comprehensive income, and WTB lead schedule — download as PwC-format PDF or multi-tab Excel.">Bilanço, kapsamlı gelir tablosu ve WTB lead schedule — PwC formatında PDF ve çok sekmeli Excel olarak indir.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="sekmeler">
+  <div class="section-eyebrow" data-tr="Excel yapısı" data-en="Excel structure">Excel yapısı</div>
+  <h2 data-tr="Excel sekme yapısı" data-en="Excel sheet structure">Excel sekme yapısı</h2>
+  <p class="section-sub" data-tr="Her sekmenin rolü ve düzenlenebilirlik durumu açıkça işaretli." data-en="Each sheet's role and editability is clearly marked.">Her sekmenin rolü ve düzenlenebilirlik durumu açıkça işaretli.</p>
+  <div class="sheet-list">
+    <div class="sheet-row">
+      <span class="sheet-index">01</span>
+      <span class="sheet-name">Cover</span>
+      <span class="sheet-desc" data-tr="Şirket, dönem, hazırlayan, versiyon, onay durumu" data-en="Company, period, preparer, version, approval status">Şirket, dönem, hazırlayan, versiyon, onay durumu</span>
+      <span class="sheet-badge badge-manual" data-tr="Manuel" data-en="Manual">Manuel</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">02</span>
+      <span class="sheet-name">TB_CY</span>
+      <span class="sheet-desc" data-tr="Ham mizan — cari dönem. Yapıştırılır, hiçbir şey hesaplanmaz." data-en="Raw trial balance — current year. Pasted as-is, nothing calculated.">Ham mizan — cari dönem. Yapıştırılır, hiçbir şey hesaplanmaz.</span>
+      <span class="sheet-badge badge-manual" data-tr="Yapıştır" data-en="Paste">Yapıştır</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">03</span>
+      <span class="sheet-name">TB_PY</span>
+      <span class="sheet-desc" data-tr="Ham mizan — önceki dönem. Karşılaştırma için." data-en="Raw trial balance — prior year. For comparison.">Ham mizan — önceki dönem. Karşılaştırma için.</span>
+      <span class="sheet-badge badge-manual" data-tr="Yapıştır" data-en="Paste">Yapıştır</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">04</span>
+      <span class="sheet-name">Mapping</span>
+      <span class="sheet-desc" data-tr="Hesap kodu → IFRS satırı, tablo, not numarası eşleştirmesi" data-en="Account code → IFRS line, statement, footnote mapping">Hesap kodu → IFRS satırı, tablo, not numarası eşleştirmesi</span>
+      <span class="sheet-badge badge-manual" data-tr="Manuel" data-en="Manual">Manuel</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">05</span>
+      <span class="sheet-name">FA_Schedule</span>
+      <span class="sheet-desc" data-tr="Sabit kıymet listesi + IAS 16 gün bazlı amortisman, VUK farkı → AJE otomatik" data-en="Fixed asset register + IAS 16 day-count depreciation, statutory diff → automatic AJE">Sabit kıymet listesi + IAS 16 gün bazlı amortisman, VUK farkı → AJE otomatik</span>
+      <span class="sheet-badge badge-auto" data-tr="Otomatik" data-en="Automatic">Otomatik</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">06</span>
+      <span class="sheet-name">AJE</span>
+      <span class="sheet-desc" data-tr="Düzeltme kayıtları — formülle gelenler kilitli, manuel AJE serbest alan" data-en="Adjustment entries — formula-driven rows locked, manual AJE freely editable">Düzeltme kayıtları — formülle gelenler kilitli, manuel AJE serbest alan</span>
+      <span class="sheet-badge badge-locked" data-tr="Karma" data-en="Mixed">Karma</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">07</span>
+      <span class="sheet-name">RJE</span>
+      <span class="sheet-desc" data-tr="Yeniden sınıflandırma kayıtları — uzun/kısa vade, netleştirme açma" data-en="Reclassification entries — long/short term, offsetting breakdown">Yeniden sınıflandırma kayıtları — uzun/kısa vade, netleştirme açma</span>
+      <span class="sheet-badge badge-locked" data-tr="Karma" data-en="Mixed">Karma</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">08</span>
+      <span class="sheet-name">WTB</span>
+      <span class="sheet-desc" data-tr="Ana tablo: TB → Carry → AJE → RJE → IFRS bakiye, CY ve PY. Tamamen formül." data-en="Main sheet: TB → Carry → AJE → RJE → IFRS balance, CY and PY. Fully formula-driven.">Ana tablo: TB → Carry → AJE → RJE → IFRS bakiye, CY ve PY. Tamamen formül.</span>
+      <span class="sheet-badge badge-locked" data-tr="Kilitli" data-en="Locked">Kilitli</span>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-index">09</span>
+      <span class="sheet-name">FS_Output</span>
+      <span class="sheet-desc" data-tr="Bilanço, GKT, özkaynak değişim tablosu — WTB'den otomatik beslenir" data-en="Balance sheet, P&L, statement of changes in equity — fed automatically from WTB">Bilanço, GKT, özkaynak değişim tablosu — WTB'den otomatik beslenir</span>
+      <span class="sheet-badge badge-auto" data-tr="Otomatik" data-en="Automatic">Otomatik</span>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="kurallar">
+  <div class="section-eyebrow" data-tr="Kurallar" data-en="Principles">Kurallar</div>
+  <h2 data-tr="Temel kurallar" data-en="Core principles">Temel kurallar</h2>
+  <p class="section-sub" data-tr="Sistemin doğruluğunu ve izlenebilirliğini koruyan prensipler." data-en="The principles that keep the system accurate and auditable.">Sistemin doğruluğunu ve izlenebilirliğini koruyan prensipler.</p>
+  <div class="rules-grid">
+    <div class="rule-card">
+      <div class="rule-icon">🔒</div>
+      <div class="rule-title" data-tr="Formül kaynaklı kayıtlar kilitli" data-en="Formula-driven entries are locked">Formül kaynaklı kayıtlar kilitli</div>
+      <div class="rule-desc" data-tr="FA_Schedule ve ETB'den üretilen AJE'lere dokunulamaz. Kaynağı değiştirmek için ilgili sekmeye gidilir." data-en="AJE rows generated from FA_Schedule and actuarial (EOSB) data cannot be edited directly. Change the source sheet instead.">FA_Schedule ve ETB'den üretilen AJE'lere dokunulamaz. Kaynağı değiştirmek için ilgili sekmeye gidilir.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-icon">✏️</div>
+      <div class="rule-title" data-tr="Manuel kayıt alanı her zaman açık" data-en="Manual entry is always available">Manuel kayıt alanı her zaman açık</div>
+      <div class="rule-desc" data-tr="AJE, RJE ve Carry'de ayrılmış manuel satırlar var. Hesap kodu yazarken isimden veya koddan otomatik tamamlama önerilir." data-en="AJE, RJE, and Carry all have dedicated manual rows. Typing an account code or name triggers live autocomplete suggestions.">AJE, RJE ve Carry'de ayrılmış manuel satırlar var. Hesap kodu yazarken isimden veya koddan otomatik tamamlama önerilir.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-icon">📅</div>
+      <div class="rule-title" data-tr="Gün bazlı amortisman" data-en="Day-count depreciation">Gün bazlı amortisman</div>
+      <div class="rule-desc" data-tr="IAS 16 kapsamında aktivasyon tarihinden itibaren gerçek gün sayısı üzerinden hesaplanır. VUK farkı otomatik AJE üretir." data-en="Calculated under IAS 16 using actual days from the activation date. The statutory difference automatically posts an AJE.">IAS 16 kapsamında aktivasyon tarihinden itibaren gerçek gün sayısı üzerinden hesaplanır. VUK farkı otomatik AJE üretir.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-icon">🔄</div>
+      <div class="rule-title" data-tr="Carry otomatik taşınır" data-en="Carry rolls forward automatically">Carry otomatik taşınır</div>
+      <div class="rule-desc" data-tr="PY IFRS bakiyeleri CY'ye Carry sekmesinde taşınır. Bilanço ↔ geçmiş yıl kârı dengesi otomatik kontrol edilir." data-en="PY IFRS balances roll into CY through the Carry sheet. The balance sheet ↔ retained earnings balance is checked automatically.">PY IFRS bakiyeleri CY'ye Carry sekmesinde taşınır. Bilanço ↔ geçmiş yıl kârı dengesi otomatik kontrol edilir.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-icon">🗂️</div>
+      <div class="rule-title" data-tr="Referans sistemi" data-en="Reference system">Referans sistemi</div>
+      <div class="rule-desc" data-tr="Her AJE ve RJE numaralıdır, gruplar arasında net ayraç vardır. WTB'de sadece referans gösterilir — PwC lead schedule standardı." data-en="Every AJE and RJE is numbered with a clear separator between groups. WTB shows only the reference — PwC lead schedule standard.">Her AJE ve RJE numaralıdır, gruplar arasında net ayraç vardır. WTB'de sadece referans gösterilir — PwC lead schedule standardı.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-icon">⚖️</div>
+      <div class="rule-title" data-tr="Denge kontrolü" data-en="Balance check">Denge kontrolü</div>
+      <div class="rule-desc" data-tr="Carry, AJE ve RJE her zaman kendi içinde dengede olmalı. WTB'de net Dr−Cr kolonu tek bakışta etkiyi gösterir." data-en="Carry, AJE, and RJE must each balance internally at all times. The WTB shows a net Dr−Cr column for at-a-glance impact.">Carry, AJE ve RJE her zaman kendi içinde dengede olmalı. WTB'de net Dr−Cr kolonu tek bakışta etkiyi gösterir.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="onizleme">
+  <div class="section-eyebrow" data-tr="Önizleme" data-en="Preview">Önizleme</div>
+  <h2 data-tr="Önizleme" data-en="Preview">Önizleme</h2>
+  <p class="section-sub" data-tr="Gerçek uygulamadan canlı ekran örnekleri." data-en="Live screen samples from the real application.">Gerçek uygulamadan canlı ekran örnekleri.</p>
+  <div class="preview-tabs">
+    <div class="ptab active" data-ptab="wtb-tab">WTB</div>
+    <div class="ptab" data-ptab="aje-tab">AJE</div>
+    <div class="ptab" data-ptab="fa-tab" data-tr="FA schedule" data-en="FA schedule">FA schedule</div>
+    <div class="ptab" data-ptab="bs-tab" data-tr="Bilanço" data-en="Balance sheet">Bilanço</div>
+  </div>
+
+  <div id="wtb-tab" class="preview-panel active">
+    <table class="mini-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;width:60px" data-tr="Kod" data-en="Code">Kod</th>
+          <th style="text-align:left;width:150px" data-tr="Hesap adı" data-en="Account name">Hesap adı</th>
+          <th>CY</th><th>PY</th>
+          <th data-tr="Carry (Net)" data-en="Carry (Net)">Carry (Net)</th>
+          <th data-tr="AJE (Net)" data-en="AJE (Net)">AJE (Net)</th>
+          <th data-tr="RJE (Net)" data-en="RJE (Net)">RJE (Net)</th>
+          <th data-tr="IFRS bakiye" data-en="IFRS balance">IFRS bakiye</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="sec"><td colspan="8" data-tr="Dönen varlıklar" data-en="Current assets">Dönen varlıklar</td></tr>
+        <tr>
+          <td>100/102</td><td data-tr="Nakit ve nakit benzerleri" data-en="Cash and cash equivalents">Nakit ve nakit benzerleri</td>
+          <td>9.690</td><td>7.080</td>
+          <td class="adj">—</td><td class="adj">—</td><td class="adj">—</td>
+          <td>9.690</td>
+        </tr>
+        <tr>
+          <td>120</td><td data-tr="Ticari alacaklar" data-en="Trade receivables">Ticari alacaklar</td>
+          <td>12.300</td><td>9.800</td>
+          <td class="adj">—</td><td class="adj neg">(320)</td><td class="adj">—</td>
+          <td>11.980</td>
+        </tr>
+        <tr class="sec"><td colspan="8" data-tr="Duran varlıklar" data-en="Non-current assets">Duran varlıklar</td></tr>
+        <tr>
+          <td>255</td><td data-tr="Maddi duran varlıklar" data-en="Property, plant and equipment">Maddi duran varlıklar</td>
+          <td>8.980</td><td>7.200</td>
+          <td class="adj neg">(180)</td><td class="adj neg">(12)</td><td class="adj">—</td>
+          <td>8.788</td>
+        </tr>
+        <tr class="sec"><td colspan="8" data-tr="Kısa vadeli yükümlülükler" data-en="Current liabilities">Kısa vadeli yükümlülükler</td></tr>
+        <tr>
+          <td>300</td><td data-tr="Ticari borçlar" data-en="Trade payables">Ticari borçlar</td>
+          <td class="neg">(5.100)</td><td class="neg">(4.200)</td>
+          <td class="adj">—</td><td class="adj">—</td><td class="adj">—</td>
+          <td class="neg">(5.100)</td>
+        </tr>
+        <tr class="tot">
+          <td colspan="2" data-tr="Net varlıklar" data-en="Net assets">Net varlıklar</td>
+          <td>25.870</td><td>19.880</td>
+          <td class="neg adj">(180)</td><td class="neg adj">(332)</td><td class="adj">—</td>
+          <td>25.358</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-note">
+      <span data-tr="Net = Dr − Cr" data-en="Net = Dr − Cr">Net = Dr − Cr</span>
+      <span data-tr="Tutarlar: TL bin" data-en="Amounts: TL thousand">Tutarlar: TL bin</span>
+    </div>
+  </div>
+
+  <div id="aje-tab" class="preview-panel">
+    <table class="mini-table">
+      <thead><tr>
+        <th style="text-align:left;width:60px" data-tr="Ref" data-en="Ref">Ref</th>
+        <th style="text-align:left;width:80px" data-tr="Kaynak" data-en="Source">Kaynak</th>
+        <th style="text-align:left" data-tr="Açıklama" data-en="Description">Açıklama</th>
+        <th style="width:80px">Dr</th>
+        <th style="width:80px">Cr</th>
+        <th style="text-align:left;width:80px" data-tr="Durum" data-en="Status">Durum</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td>AJE-01</td><td style="text-align:left">FA_Schedule</td>
+          <td style="text-align:left" data-tr="IAS 16 — MDV amortisman farkı (CY)" data-en="IAS 16 — PP&E depreciation difference (CY)">IAS 16 — MDV amortisman farkı (CY)</td>
+          <td class="neg">12</td><td>—</td>
+          <td style="text-align:left"><span class="sheet-badge badge-locked" style="font-size:9px">🔒 <span data-tr="Kilitli" data-en="Locked">Kilitli</span></span></td>
+        </tr>
+        <tr>
+          <td>AJE-02</td><td style="text-align:left" data-tr="Manuel" data-en="Manual">Manuel</td>
+          <td style="text-align:left" data-tr="Şüpheli alacak karşılığı (TFRS 9)" data-en="Doubtful receivable provision (TFRS 9)">Şüpheli alacak karşılığı (TFRS 9)</td>
+          <td>—</td><td class="neg">320</td>
+          <td style="text-align:left"><span class="sheet-badge badge-manual" style="font-size:9px">✏️ <span data-tr="Manuel" data-en="Manual">Manuel</span></span></td>
+        </tr>
+        <tr>
+          <td>AJE-04</td><td style="text-align:left">ETB</td>
+          <td style="text-align:left" data-tr="IAS 19 kıdem tazminatı karşılığı" data-en="IAS 19 termination benefit provision">IAS 19 kıdem tazminatı karşılığı</td>
+          <td>—</td><td class="neg">3.090</td>
+          <td style="text-align:left"><span class="sheet-badge badge-locked" style="font-size:9px">🔒 <span data-tr="Kilitli" data-en="Locked">Kilitli</span></span></td>
+        </tr>
+        <tr class="tot">
+          <td colspan="3" data-tr="Toplam" data-en="Total">Toplam</td>
+          <td>12</td><td>3.422</td><td></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-note"><span data-tr="🔒 Kilitli satırlara dokunulamaz — kaynağı değiştir" data-en="🔒 Locked rows cannot be edited — change the source instead">🔒 Kilitli satırlara dokunulamaz — kaynağı değiştir</span></div>
+  </div>
+
+  <div id="fa-tab" class="preview-panel">
+    <table class="mini-table">
+      <thead><tr>
+        <th style="text-align:left" data-tr="Kıymet" data-en="Asset">Kıymet</th>
+        <th style="width:80px" data-tr="Maliyet" data-en="Cost">Maliyet</th>
+        <th style="width:80px" data-tr="Aktiv. tarihi" data-en="Activation date">Aktiv. tarihi</th>
+        <th style="width:50px" data-tr="Ömür" data-en="Life">Ömür</th>
+        <th style="width:80px" data-tr="IFRS amor." data-en="IFRS dep.">IFRS amor.</th>
+        <th style="width:80px" data-tr="VUK amor." data-en="Stat. dep.">VUK amor.</th>
+        <th style="width:70px" data-tr="Fark → AJE" data-en="Diff → AJE">Fark → AJE</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td style="text-align:left" data-tr="Fabrika binası" data-en="Factory building">Fabrika binası</td>
+          <td>8.000</td><td>15.03.2015</td><td>40 <span data-tr="yıl" data-en="yr">yıl</span></td>
+          <td>200</td><td>200</td><td class="adj">—</td>
+        </tr>
+        <tr>
+          <td style="text-align:left" data-tr="CNC tezgahı" data-en="CNC machine">CNC tezgahı</td>
+          <td>2.400</td><td>07.09.2019</td><td>10 <span data-tr="yıl" data-en="yr">yıl</span></td>
+          <td>247</td><td>240</td><td class="neg adj">7 🔒</td>
+        </tr>
+        <tr>
+          <td style="text-align:left" data-tr="Araç filosu" data-en="Vehicle fleet">Araç filosu</td>
+          <td>1.200</td><td>12.02.2022</td><td>5 <span data-tr="yıl" data-en="yr">yıl</span></td>
+          <td>245</td><td>240</td><td class="neg adj">5 🔒</td>
+        </tr>
+        <tr class="tot">
+          <td data-tr="Toplam" data-en="Total">Toplam</td>
+          <td>11.600</td><td></td><td></td>
+          <td>692</td><td>680</td><td class="neg adj">12 🔒</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-note">
+      <span data-tr="Gün bazlı — aktivasyon tarihinden itibaren" data-en="Day-count — from activation date">Gün bazlı — aktivasyon tarihinden itibaren</span>
+      <span data-tr="Fark otomatik AJE-01 olarak WTB'ye gider" data-en="Difference automatically posts as AJE-01 to the WTB">Fark otomatik AJE-01 olarak WTB'ye gider</span>
+    </div>
+  </div>
+
+  <div id="bs-tab" class="preview-panel">
+    <table class="mini-table">
+      <thead><tr>
+        <th style="text-align:left" data-tr="Kalem" data-en="Item">Kalem</th>
+        <th style="width:60px" data-tr="Not" data-en="Note">Not</th>
+        <th style="width:90px">31.12.2025</th>
+        <th style="width:90px">31.12.2024</th>
+      </tr></thead>
+      <tbody>
+        <tr class="sec"><td colspan="4" data-tr="Varlıklar — Dönen" data-en="Assets — Current">Varlıklar — Dönen</td></tr>
+        <tr><td style="text-align:left;padding-left:14px" data-tr="Nakit ve nakit benzerleri" data-en="Cash and cash equivalents">Nakit ve nakit benzerleri</td><td>7</td><td>9.690</td><td>7.080</td></tr>
+        <tr><td style="text-align:left;padding-left:14px" data-tr="Ticari alacaklar" data-en="Trade receivables">Ticari alacaklar</td><td>8</td><td>11.980</td><td>9.800</td></tr>
+        <tr><td style="text-align:left;padding-left:14px" data-tr="Stoklar" data-en="Inventories">Stoklar</td><td>9</td><td>4.650</td><td>3.600</td></tr>
+        <tr class="sec"><td colspan="4" data-tr="Varlıklar — Duran" data-en="Assets — Non-current">Varlıklar — Duran</td></tr>
+        <tr><td style="text-align:left;padding-left:14px" data-tr="Maddi duran varlıklar" data-en="Property, plant and equipment">Maddi duran varlıklar</td><td>10</td><td>8.788</td><td>7.200</td></tr>
+        <tr><td style="text-align:left;padding-left:14px" data-tr="Ertelenmiş vergi varlığı" data-en="Deferred tax asset">Ertelenmiş vergi varlığı</td><td>11</td><td class="pos">969</td><td class="pos">540</td></tr>
+        <tr class="tot"><td style="text-align:left" data-tr="Toplam varlıklar" data-en="Total assets">Toplam varlıklar</td><td></td><td>36.077</td><td>28.220</td></tr>
+        <tr class="sec"><td colspan="4" data-tr="Yükümlülükler" data-en="Liabilities">Yükümlülükler</td></tr>
+        <tr><td style="text-align:left;padding-left:14px" data-tr="Ticari borçlar" data-en="Trade payables">Ticari borçlar</td><td>12</td><td class="neg">(5.100)</td><td class="neg">(4.200)</td></tr>
+        <tr><td style="text-align:left;padding-left:14px" data-tr="ETB yükümlülüğü (IAS 19)" data-en="Termination benefit liability (IAS 19)">ETB yükümlülüğü (IAS 19)</td><td>13</td><td class="neg">(3.090)</td><td class="neg">(2.700)</td></tr>
+        <tr class="tot"><td style="text-align:left" data-tr="Özkaynaklar" data-en="Equity">Özkaynaklar</td><td></td><td class="pos">27.628</td><td class="pos">21.110</td></tr>
+      </tbody>
+    </table>
+    <div class="table-note"><span data-tr="WTB'den otomatik beslenir · Tutarlar: TL bin" data-en="Automatically fed from WTB · Amounts: TL thousand">WTB'den otomatik beslenir · Tutarlar: TL bin</span></div>
+  </div>
+</section>
+
+<section class="section" id="sss">
+  <div class="section-eyebrow" data-tr="Sıkça sorulan sorular" data-en="Frequently asked questions">Sıkça sorulan sorular</div>
+  <h2 data-tr="SSS" data-en="FAQ">SSS</h2>
+  <div class="faq-list">
+    <div class="faq-item">
+      <div class="faq-q" data-tr="WTB (Working Trial Balance) nedir?" data-en="What is a WTB (Working Trial Balance)?">WTB (Working Trial Balance) nedir?</div>
+      <div class="faq-a" data-tr="WTB, VUK/statutory mizandan IFRS finansal tablolara geçişte kullanılan, denetim firmalarının (Big4) standart olarak kullandığı çalışma tablosudur. Mizan bakiyesine açılış (Carry), düzeltme (AJE) ve sınıflandırma (RJE) kayıtları eklenerek IFRS bakiyesine ulaşılır." data-en="A WTB is the standard working schedule used by audit firms (Big4) to bridge statutory trial balances to IFRS financial statements. Opening (Carry), adjustment (AJE), and reclassification (RJE) entries are layered onto the statutory balance to arrive at the IFRS balance.">WTB, VUK/statutory mizandan IFRS finansal tablolara geçişte kullanılan, denetim firmalarının (Big4) standart olarak kullandığı çalışma tablosudur. Mizan bakiyesine açılış (Carry), düzeltme (AJE) ve sınıflandırma (RJE) kayıtları eklenerek IFRS bakiyesine ulaşılır.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" data-tr="AJE ve RJE arasındaki fark nedir?" data-en="What is the difference between AJE and RJE?">AJE ve RJE arasındaki fark nedir?</div>
+      <div class="faq-a" data-tr="AJE (Adjustment Journal Entry) bilanço ile gelir tablosu arasında denge kurar — örneğin bir karşılık ayırma. RJE (Reclassification Journal Entry) ise bilanço↔bilanço veya gelir tablosu↔gelir tablosu içinde sınıflandırma yapar, net kâr/zararı etkilemez." data-en="An AJE (Adjustment Journal Entry) balances between the balance sheet and income statement — for example, recognizing a provision. An RJE (Reclassification Journal Entry) reclassifies within the balance sheet or within the income statement and does not affect net profit.">AJE (Adjustment Journal Entry) bilanço ile gelir tablosu arasında denge kurar — örneğin bir karşılık ayırma. RJE (Reclassification Journal Entry) ise bilanço↔bilanço veya gelir tablosu↔gelir tablosu içinde sınıflandırma yapar, net kâr/zararı etkilemez.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" data-tr="Ertelenmiş vergi nasıl hesaplanıyor?" data-en="How is deferred tax calculated?">Ertelenmiş vergi nasıl hesaplanıyor?</div>
+      <div class="faq-a" data-tr="Sistem her hesap kodu için statutory+RJE bakiyesi ile IFRS bakiyesi arasındaki geçici farkı otomatik bulur, girdiğin kurumlar vergisi oranıyla çarpıp DTA/DTL olarak sınıflandırır. Hesaplama WTB'deki güncel verilerle anında yenilenir." data-en="The system automatically finds the temporary difference between the statutory+RJE balance and the IFRS balance for every account code, multiplies it by your corporate tax rate, and classifies it as DTA/DTL. The calculation refreshes instantly with the latest WTB data.">Sistem her hesap kodu için statutory+RJE bakiyesi ile IFRS bakiyesi arasındaki geçici farkı otomatik bulur, girdiğin kurumlar vergisi oranıyla çarpıp DTA/DTL olarak sınıflandırır. Hesaplama WTB'deki güncel verilerle anında yenilenir.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" data-tr="Verilerim güvende mi?" data-en="Is my data secure?">Verilerim güvende mi?</div>
+      <div class="faq-a" data-tr="Mizan, sabit kıymet ve aktüeryal verileriniz yalnızca sizin hesabınıza bağlı çalışma alanında tutulur. Her şirket kendi hesap planını ve mapping'ini yükler; veriler şirketler arasında paylaşılmaz." data-en="Your trial balance, fixed asset, and actuarial data are kept only within your own account's workspace. Each company uploads its own chart of accounts and mapping; data is never shared across companies.">Mizan, sabit kıymet ve aktüeryal verileriniz yalnızca sizin hesabınıza bağlı çalışma alanında tutulur. Her şirket kendi hesap planını ve mapping'ini yükler; veriler şirketler arasında paylaşılmaz.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" data-tr="Hangi formatlarda çıktı alabilirim?" data-en="What output formats are available?">Hangi formatlarda çıktı alabilirim?</div>
+      <div class="faq-a" data-tr="Tam WTB'yi 9 sekmeli Excel (.xlsx) olarak, finansal tabloları ve PwC formatındaki lead schedule'ı PDF olarak indirebilirsin." data-en="You can download the full WTB as a 9-tab Excel (.xlsx) file, and the financial statements plus the PwC-format lead schedule as PDF.">Tam WTB'yi 9 sekmeli Excel (.xlsx) olarak, finansal tabloları ve PwC formatındaki lead schedule'ı PDF olarak indirebilirsin.</div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="cta-text">
+    <h2 data-tr="Hemen başla" data-en="Get started now">Hemen başla</h2>
+    <p data-tr="Hesap oluştur, ilk mizanını yapıştır, dakikalar içinde WTB'ni gör." data-en="Create an account, paste your first trial balance, and see your WTB in minutes.">Hesap oluştur, ilk mizanını yapıştır, dakikalar içinde WTB'ni gör.</p>
+  </div>
+  <div class="cta-actions">
+    <a class="btn-primary" href="app.html" data-tr="Ücretsiz hesap oluştur" data-en="Create a free account">Ücretsiz hesap oluştur</a>
+    <a class="btn-outline" href="app.html?demo=1" data-tr="Demoyu incele ↗" data-en="Check demo ↗">Demoyu incele ↗</a>
+  </div>
+</section>
+
+<footer>
+  <span class="footer-left">IFRS Workbench</span>
+  <span class="footer-right">IAS 1 · IAS 2 · IAS 16 · IAS 19 · TFRS 9</span>
+</footer>
+
+<script>
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-tr]').forEach(el => {
+    const val = lang === 'en' ? el.dataset.en : el.dataset.tr;
+    if (val !== undefined) el.textContent = val;
+  });
+  document.querySelectorAll('[data-tr-html]').forEach(el => {
+    const val = lang === 'en' ? el.dataset.enHtml : el.dataset.trHtml;
+    if (val !== undefined) el.innerHTML = val;
+  });
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  try { localStorage.setItem('wtb_lang', lang); } catch (e) {}
+}
+
+document.querySelectorAll('[data-action="set-lang"]').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+});
+
+document.querySelector('[data-action="toggle-theme"]').addEventListener('click', () => {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  try { localStorage.setItem('wtb_theme', next); } catch (e) {}
+});
+
+document.querySelectorAll('.ptab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.preview-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.ptab).classList.add('active');
+  });
+});
+
+(function init() {
+  let lang = 'tr', theme = 'light';
+  try {
+    lang = localStorage.getItem('wtb_lang') || 'tr';
+    theme = localStorage.getItem('wtb_theme') || 'light';
+  } catch (e) {}
+  document.documentElement.dataset.theme = theme;
+  applyLang(lang);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tools4finance — Finans Ekipleri İçin Profesyonel Araçlar</title>
+<meta name="description" content="tools4finance: IFRS raporlama, mutabakat ve finansal analiz araçları tek platformda. Finans ekipleri için tasarlanmış, gerçek muhasebe mantığıyla çalışan profesyonel yazılımlar.">
+<meta name="keywords" content="IFRS, WTB, finansal raporlama, mutabakat, bridge, finans yazılımı, muhasebe otomasyonu">
+<meta property="og:title" content="tools4finance — Finans Ekipleri İçin Profesyonel Araçlar">
+<meta property="og:description" content="IFRS raporlama, mutabakat ve finansal analiz araçları tek platformda.">
+<meta property="og:type" content="website">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F6F8; --bg2: #EAECF0; --bg3: #DCE0E8;
+  --surface: #FFFFFF; --border: rgba(20,30,55,0.08); --border-strong: rgba(20,30,55,0.15);
+  --text: #161B2E; --text2: #545B72; --text3: #9499AC;
+  --accent: #2E3A8C; --accent-text: #FFFFFF;
+  --green: #14805E; --green-bg: #DFF1E9;
+  --amber: #92620C; --amber-bg: #F8EAD3;
+  --blue: #2E3A8C; --blue-bg: #E5E7F8;
+  --purple: #5E4B9E; --purple-bg: #ECE6F8;
+  --coral: #A14438; --coral-bg: #F7E5E2;
+}
+[data-theme="dark"] {
+  --bg: #10131F; --bg2: #161A2B; --bg3: #1F2438;
+  --surface: #141828; --border: rgba(225,228,240,0.08); --border-strong: rgba(225,228,240,0.15);
+  --text: #E7E9F5; --text2: #9DA2BC; --text3: #5F6480;
+  --accent: #8C97FF; --accent-text: #10131F;
+  --green: #59CDA3; --green-bg: #11302A;
+  --amber: #E3B25C; --amber-bg: #362708;
+  --blue: #8C97FF; --blue-bg: #1C2150;
+  --purple: #B5A0EC; --purple-bg: #2A2050;
+  --coral: #E0897A; --coral-bg: #3A1F1A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 15px; line-height: 1.6;
+  transition: background 0.25s, color 0.25s;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg);
+  border-bottom: 0.5px solid var(--border);
+  padding: 0 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.nav-logo { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.nav-logo svg { width: 16px; height: 16px; }
+.nav-name { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
+.nav-links { display: flex; align-items: center; gap: 24px; }
+.nav-links a.nav-link { font-size: 13px; color: var(--text2); }
+.nav-links a.nav-link:hover { color: var(--text); }
+.lang-toggle { display: flex; border: 0.5px solid var(--border-strong); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.lang-btn { padding: 4px 9px; font-size: 11px; color: var(--text2); background: var(--surface); border: none; cursor: pointer; font-family: 'DM Mono', monospace; }
+.lang-btn.active { background: var(--accent); color: var(--accent-text); }
+.theme-toggle { width: 36px; height: 20px; background: var(--bg3); border-radius: 10px; border: 0.5px solid var(--border-strong); cursor: pointer; position: relative; flex-shrink: 0; }
+.theme-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text); border-radius: 50%; transition: transform 0.2s; }
+[data-theme="dark"] .theme-toggle::after { transform: translateX(16px); }
+.nav-login-btn { padding: 7px 16px; background: var(--accent); color: var(--accent-text); border-radius: 7px; font-size: 13px; font-weight: 500; }
+.nav-login-btn:hover { opacity: 0.85; }
+
+.hero { padding: 90px 40px 60px; max-width: 920px; margin: 0 auto; text-align: center; }
+.hero-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: var(--text3); text-transform: uppercase; margin-bottom: 24px; white-space: nowrap; }
+.hero-eyebrow span { display: inline-block; width: 16px; height: 1px; background: var(--text3); }
+.hero-title { font-size: clamp(32px, 5vw, 50px); font-weight: 300; letter-spacing: -0.03em; line-height: 1.15; color: var(--text); margin-bottom: 20px; }
+.hero-title em { font-style: normal; font-weight: 500; }
+.hero-sub { font-size: 16px; color: var(--text2); max-width: 540px; margin: 0 auto; line-height: 1.7; }
+
+.products-section { padding: 50px 40px 100px; max-width: 920px; margin: 0 auto; }
+.products-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.product-card {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px;
+  padding: 28px 24px; display: flex; flex-direction: column; gap: 14px;
+  cursor: pointer; transition: border-color 0.15s, transform 0.15s;
+  text-align: left; min-height: 240px;
+}
+.product-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+.product-card.disabled { cursor: default; opacity: 0.78; }
+.product-card.disabled:hover { transform: none; }
+.product-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.product-icon svg { width: 20px; height: 20px; }
+.icon-blue { background: var(--blue-bg); color: var(--blue); }
+.icon-purple { background: var(--purple-bg); color: var(--purple); }
+.icon-coral { background: var(--coral-bg); color: var(--coral); }
+.product-name { font-size: 16px; font-weight: 500; color: var(--text); letter-spacing: -0.01em; }
+.product-desc { font-size: 13px; color: var(--text2); line-height: 1.6; flex: 1; }
+.product-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.product-status { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; }
+.status-live { background: var(--green-bg); color: var(--green); }
+.status-soon { background: var(--bg3); color: var(--text3); }
+.product-arrow { font-size: 16px; color: var(--text3); transition: transform 0.15s; }
+.product-card:hover .product-arrow { transform: translateX(3px); color: var(--text); }
+
+.bottom-section { border-top: 0.5px solid var(--border); padding: 70px 40px; max-width: 920px; margin: 0 auto; text-align: center; }
+.bottom-section h2 { font-size: 24px; font-weight: 300; letter-spacing: -0.02em; color: var(--text); margin-bottom: 12px; }
+.bottom-section p { font-size: 14px; color: var(--text2); max-width: 480px; margin: 0 auto 28px; }
+.btn-primary { display: inline-block; padding: 10px 22px; background: var(--accent); color: var(--accent-text); border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; }
+.btn-primary:hover { opacity: 0.85; }
+
+footer { border-top: 0.5px solid var(--border); padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; max-width: 920px; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+.footer-left { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.footer-links { display: flex; gap: 18px; }
+.footer-links a { font-size: 12px; color: var(--text3); }
+.footer-links a:hover { color: var(--text2); }
+
+@media (max-width: 720px) {
+  nav { padding: 0 16px; gap: 8px; }
+  .nav-link { display: none; }
+  .hero { padding: 56px 20px 40px; }
+  .products-section { padding: 30px 20px 70px; }
+  .products-grid { grid-template-columns: 1fr; }
+  .bottom-section { padding: 50px 20px; }
+  footer { padding: 20px; flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="5" height="5" rx="1" fill="white"/>
+        <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+        <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity="0.5"/>
+        <rect x="9" y="9" width="5" height="5" rx="1" fill="white"/>
+      </svg>
+    </div>
+    <span class="nav-name">tools4finance</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="pricing.html" data-tr="Fiyatlama" data-en="Pricing">Fiyatlama</a>
+    <a class="nav-link" href="contact.html" data-tr="İletişim" data-en="Contact">İletişim</a>
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-action="set-lang" data-lang="tr">TR</button>
+      <button class="lang-btn" data-action="set-lang" data-lang="en">EN</button>
+    </div>
+    <button class="theme-toggle" data-action="toggle-theme" aria-label="Tema değiştir"></button>
+    <a class="nav-login-btn" href="ifrs/app.html" data-tr="Giriş yap" data-en="Sign in">Giriş yap</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> <span data-tr="Finans Ekipleri İçin Araç Seti" data-en="Toolkit for Finance Teams">Finans Ekipleri İçin Araç Seti</span></div>
+  <h1 class="hero-title" data-tr-html="Finans ekibinizin <em>günlük işini</em><br>hızlandıran araçlar." data-en-html="Tools that speed up<br>your finance team's <em>daily work</em>.">
+    Finans ekibinizin <em>günlük işini</em><br>hızlandıran araçlar.
+  </h1>
+  <p class="hero-sub" data-tr="IFRS raporlamadan mutabakata, finansal analizden veri görselleştirmeye — her araç gerçek muhasebe mantığıyla, denetim standardında çalışır." data-en="From IFRS reporting to reconciliation, financial analysis to data visualization — every tool runs on real accounting logic, built to audit standards.">
+    IFRS raporlamadan mutabakata, finansal analizden veri görselleştirmeye — her araç gerçek muhasebe mantığıyla, denetim standardında çalışır.
+  </p>
+</section>
+
+<section class="products-section">
+  <div class="products-grid">
+    <a class="product-card" href="ifrs/index.html">
+      <div class="product-icon icon-blue">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="16" height="16" rx="2"/><line x1="2" y1="7" x2="18" y2="7"/><line x1="2" y1="12" x2="18" y2="12"/><line x1="7" y1="2" x2="7" y2="18"/></svg>
+      </div>
+      <div>
+        <div class="product-name">IFRS Reporting</div>
+        <div class="product-desc" data-tr="VUK mizanından IFRS finansal tablolara — AJE, RJE, ertelenmiş vergi otomasyonu ile çalışan Working Trial Balance platformu." data-en="From statutory trial balance to IFRS statements — a Working Trial Balance platform with AJE, RJE, and deferred tax automation.">VUK mizanından IFRS finansal tablolara — AJE, RJE, ertelenmiş vergi otomasyonu ile çalışan Working Trial Balance platformu.</div>
+      </div>
+      <div class="product-footer">
+        <span class="product-status status-live" data-tr="Aktif" data-en="Live">Aktif</span>
+        <span class="product-arrow">→</span>
+      </div>
+    </a>
+
+    <a class="product-card" href="bridge/index.html">
+      <div class="product-icon icon-purple">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14h16M4 14V8a6 6 0 0112 0v6"/><line x1="4" y1="14" x2="4" y2="17"/><line x1="16" y1="14" x2="16" y2="17"/><line x1="10" y1="8" x2="10" y2="14"/></svg>
+      </div>
+      <div>
+        <div class="product-name">Bridge</div>
+        <div class="product-desc" data-tr="İki sistem arası mutabakatı otomatikleştirin. ERP, banka ekstresi ve kebir verisini eşleştirip farkları anında raporlayın." data-en="Automate reconciliation between two systems. Match ERP, bank statement, and ledger data and surface differences instantly.">İki sistem arası mutabakatı otomatikleştirin. ERP, banka ekstresi ve kebir verisini eşleştirip farkları anında raporlayın.</div>
+      </div>
+      <div class="product-footer">
+        <span class="product-status status-soon" data-tr="Yakında" data-en="Coming soon">Yakında</span>
+        <span class="product-arrow">→</span>
+      </div>
+    </a>
+
+    <a class="product-card" href="graph/index.html">
+      <div class="product-icon icon-coral">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 17V9M9 17V3M15 17v-6M3 17h14"/></svg>
+      </div>
+      <div>
+        <div class="product-name">Graph</div>
+        <div class="product-desc" data-tr="Finansal verinizi etkileşimli panolara dönüştürün. Trend analizi, varyans karşılaştırması ve yönetim raporları tek ekranda." data-en="Turn your financial data into interactive dashboards. Trend analysis, variance comparison, and management reporting in one screen.">Finansal verinizi etkileşimli panolara dönüştürün. Trend analizi, varyans karşılaştırması ve yönetim raporları tek ekranda.</div>
+      </div>
+      <div class="product-footer">
+        <span class="product-status status-soon" data-tr="Yakında" data-en="Coming soon">Yakında</span>
+        <span class="product-arrow">→</span>
+      </div>
+    </a>
+  </div>
+</section>
+
+<section class="bottom-section">
+  <h2 data-tr="Finans ekibiniz için doğru aracı seçin" data-en="Pick the right tool for your finance team">Finans ekibiniz için doğru aracı seçin</h2>
+  <p data-tr="IFRS Reporting ile başlayın, gerçek bir şirketin verisiyle hazırlanmış demoyu dakikalar içinde inceleyin." data-en="Start with IFRS Reporting and explore a demo built on a real company's data in minutes.">IFRS Reporting ile başlayın, gerçek bir şirketin verisiyle hazırlanmış demoyu dakikalar içinde inceleyin.</p>
+  <a class="btn-primary" href="ifrs/index.html" data-tr="IFRS Reporting'i incele" data-en="Explore IFRS Reporting">IFRS Reporting'i incele</a>
+</section>
+
+<footer>
+  <span class="footer-left">tools4finance</span>
+  <div class="footer-links">
+    <a href="pricing.html" data-tr="Fiyatlama" data-en="Pricing">Fiyatlama</a>
+    <a href="contact.html" data-tr="İletişim" data-en="Contact">İletişim</a>
+  </div>
+</footer>
+
+<script>
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-tr]').forEach(el => {
+    const val = lang === 'en' ? el.dataset.en : el.dataset.tr;
+    if (val !== undefined) el.textContent = val;
+  });
+  document.querySelectorAll('[data-tr-html]').forEach(el => {
+    const val = lang === 'en' ? el.dataset.enHtml : el.dataset.trHtml;
+    if (val !== undefined) el.innerHTML = val;
+  });
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  try { localStorage.setItem('wtb_lang', lang); } catch (e) {}
+}
+document.querySelectorAll('[data-action="set-lang"]').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+});
+document.querySelector('[data-action="toggle-theme"]').addEventListener('click', () => {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  try { localStorage.setItem('wtb_theme', next); } catch (e) {}
+});
+(function init() {
+  let lang = 'tr', theme = 'light';
+  try {
+    lang = localStorage.getItem('wtb_lang') || 'tr';
+    theme = localStorage.getItem('wtb_theme') || 'light';
+  } catch (e) {}
+  document.documentElement.dataset.theme = theme;
+  applyLang(lang);
+})();
+</script>
+</body>
+</html>

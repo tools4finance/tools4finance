@@ -1,0 +1,2023 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IFRS Workbench — WTB</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F6F8; --bg2: #EAECF0; --bg3: #DCE0E8;
+  --surface: #FFFFFF; --border: rgba(20,30,55,0.08); --border-strong: rgba(20,30,55,0.15);
+  --text: #161B2E; --text2: #545B72; --text3: #9499AC;
+  --accent: #2E3A8C; --accent-text: #FFFFFF;
+  --green: #14805E; --green-bg: #DFF1E9;
+  --amber: #92620C; --amber-bg: #F8EAD3;
+  --blue: #2E3A8C; --blue-bg: #E5E7F8;
+  --purple: #5E4B9E; --purple-bg: #ECE6F8;
+  --coral: #A14438; --coral-bg: #F7E5E2;
+}
+[data-theme="dark"] {
+  --bg: #10131F; --bg2: #161A2B; --bg3: #1F2438;
+  --surface: #141828; --border: rgba(225,228,240,0.08); --border-strong: rgba(225,228,240,0.15);
+  --text: #E7E9F5; --text2: #9DA2BC; --text3: #5F6480;
+  --accent: #8C97FF; --accent-text: #10131F;
+  --green: #59CDA3; --green-bg: #11302A;
+  --amber: #E3B25C; --amber-bg: #362708;
+  --blue: #8C97FF; --blue-bg: #1C2150;
+  --purple: #B5A0EC; --purple-bg: #2A2050;
+  --coral: #E0897A; --coral-bg: #3A1F1A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
+input,select,textarea,button{font-family:'Inter',sans-serif}
+
+.shell{display:grid;grid-template-rows:48px 1fr;grid-template-columns:200px 1fr;height:100vh;overflow:hidden}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:10}
+.logo{width:24px;height:24px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo svg{width:13px;height:13px}
+.app-title{font-size:13px;font-weight:500;color:var(--text);margin-right:8px}
+.company-badge{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.theme-btn{width:32px;height:18px;background:var(--bg3);border-radius:9px;border:0.5px solid var(--border-s);cursor:pointer;position:relative;flex-shrink:0}
+.theme-btn::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;background:var(--text);border-radius:50%;transition:transform .2s}
+[data-theme="dark"] .theme-btn::after{transform:translateX(14px)}
+.status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.status-dot.ok{background:var(--green)}
+.status-dot.bad{background:var(--red)}
+.status-text{font-size:11px;color:var(--text3)}
+
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;padding:12px 8px}
+.sidebar-section{margin-bottom:4px}
+.sidebar-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);padding:6px 8px 4px;text-transform:uppercase;letter-spacing:.06em}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;color:var(--text2);font-size:12px;transition:background .1s,color .1s}
+.nav-item:hover{background:var(--bg2);color:var(--text)}
+.nav-item.active{background:var(--bg3);color:var(--text);font-weight:500}
+.nav-badge{margin-left:auto;font-size:9px;padding:1px 5px;border-radius:10px;font-weight:500}
+.nb-ok{background:var(--green-bg);color:var(--green)}
+.nb-warn{background:var(--amber-bg);color:var(--amber)}
+.nb-bad{background:var(--red-bg);color:var(--red)}
+.nb-lock{background:var(--bg3);color:var(--text3)}
+
+.main{overflow-y:auto;background:var(--bg)}
+.screen{display:none;padding:20px 24px;max-width:1180px;margin:0 auto;width:100%}
+.screen.active{display:block}
+.screen-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.screen-title{font-size:15px;font-weight:500;color:var(--text)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:5px 12px;font-size:12px;border:0.5px solid var(--border-s);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;transition:background .12s}
+.btn:hover{background:var(--bg2)}
+.btn-p{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
+.btn-p:hover{opacity:.85}
+.btn-sm{padding:3px 8px;font-size:11px}
+
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.card-header{padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.card-title{font-size:12px;font-weight:500;color:var(--text)}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:500;white-space:nowrap}
+.b-ok{background:var(--green-bg);color:var(--green)}
+.b-warn{background:var(--amber-bg);color:var(--amber)}
+.b-bad{background:var(--red-bg);color:var(--red)}
+.b-lock{background:var(--bg3);color:var(--text3)}
+.b-blue{background:var(--blue-bg);color:var(--blue)}
+
+.tbl{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.tbl th{background:var(--bg2);padding:6px 9px;text-align:right;font-weight:500;font-size:10px;color:var(--text2);border-bottom:0.5px solid var(--border);white-space:nowrap;font-family:'DM Mono',monospace;position:sticky;top:0}
+.tbl th.tl,.tbl td.tl{text-align:left}
+.tbl th.grp{text-align:center;background:var(--bg3);font-size:9px;color:var(--text3)}
+.tbl td{padding:5px 9px;text-align:right;border-bottom:0.5px solid var(--border);color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl td.tl{color:var(--text2);white-space:normal}
+.tbl td.mono{font-family:'DM Mono',monospace;font-size:10px}
+.tbl tr.sec td{background:var(--bg2);font-weight:500;font-size:10px;color:var(--text2);text-align:left}
+.tbl tr.tot td{background:var(--bg2);font-weight:500;border-top:0.5px solid var(--border-s)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.unmapped td{background:var(--amber-bg)}
+.pos{color:var(--green)}.neg{color:var(--red)}.adj{color:var(--blue)}.zero{color:var(--text3)}
+.lock-icon{font-size:9px;color:var(--text3);margin-left:3px}
+.tbl-wrap{overflow-x:auto;max-height:560px;overflow-y:auto}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.metric{background:var(--bg2);border-radius:8px;padding:12px 14px}
+.metric-label{font-size:10px;color:var(--text3);margin-bottom:3px}
+.metric-val{font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text)}
+.metric-sub{font-size:10px;color:var(--text3);margin-top:2px}
+
+.paste-zone{border:0.5px dashed var(--border-s);border-radius:8px;padding:18px;background:var(--bg2);margin-bottom:10px}
+.paste-zone textarea{width:100%;min-height:90px;font-family:'DM Mono',monospace;font-size:11px;border:0.5px solid var(--border-s);border-radius:6px;padding:8px;background:var(--surface);color:var(--text);resize:vertical}
+.paste-row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.paste-hint{font-size:10px;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace}
+
+.je-form{display:grid;grid-template-columns:60px 90px 1fr 90px 90px 1fr 60px 28px;gap:6px;align-items:center;padding:7px 10px;border-bottom:0.5px solid var(--border-s)}
+.je-form.hdr{background:var(--bg2);font-size:9px;font-weight:500;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:0.5px solid var(--border-s)}
+.je-form input,.je-form select{font-size:11px;padding:3px 6px;border:0.5px solid var(--border-s);border-radius:5px;background:var(--surface);color:var(--text);width:100%}
+.je-form input:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed}
+.je-group-sep{border-top:2px solid var(--text3);margin-top:3px;padding-top:10px}
+.je-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0}
+.je-del:hover{color:var(--red)}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--accent);color:var(--accent-t);padding:10px 16px;border-radius:8px;font-size:12px;font-weight:500;z-index:999;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+
+.stab-bar{display:flex;border-bottom:0.5px solid var(--border)}
+.stab{padding:8px 14px;font-size:11px;color:var(--text3);cursor:pointer;border-bottom:1.5px solid transparent}
+.stab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500}
+.stab-panel{display:none}.stab-panel.active{display:block}
+
+.tbl-note{padding:8px 12px;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;border-top:0.5px solid var(--border);display:flex;gap:16px;flex-wrap:wrap}
+.empty-state{padding:32px 20px;text-align:center;color:var(--text3);font-size:12px}
+.field-row{display:grid;grid-template-columns:1fr 110px;gap:6px;align-items:center;font-size:12px;padding:3px 0}
+.field-row span{color:var(--text2)}
+.field-row input{font-size:12px;padding:4px 7px;border:0.5px solid var(--border-s);border-radius:5px;background:var(--surface);color:var(--text);text-align:right}
+
+.lang-toggle{display:flex;border:0.5px solid var(--border-s);border-radius:6px;overflow:hidden;flex-shrink:0}
+.lang-btn{padding:4px 9px;font-size:11px;color:var(--text2);background:var(--surface);border:none;cursor:pointer;font-family:'DM Mono',monospace}
+.lang-btn.active{background:var(--accent);color:var(--accent-t)}
+
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
+.auth-card{width:100%;max-width:380px;background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:32px 28px}
+.auth-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.auth-logo{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.auth-logo svg{width:19px;height:19px}
+.auth-title{font-size:18px;font-weight:500;color:var(--text);margin-bottom:4px}
+.auth-sub{font-size:12px;color:var(--text2);margin-bottom:24px}
+.auth-field{margin-bottom:14px}
+.auth-field label{display:block;font-size:11px;color:var(--text2);margin-bottom:5px}
+.auth-field input{width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--border-s);border-radius:7px;background:var(--bg);color:var(--text)}
+.auth-field input:focus{outline:none;border-color:var(--text2)}
+.auth-btn{width:100%;padding:9px;font-size:13px;font-weight:500;background:var(--accent);color:var(--accent-t);border:none;border-radius:7px;cursor:pointer;margin-top:6px}
+.auth-btn:hover{opacity:.88}
+.auth-switch{text-align:center;font-size:12px;color:var(--text2);margin-top:18px}
+.auth-switch a{color:var(--text);font-weight:500;cursor:pointer;text-decoration:underline}
+.auth-error{font-size:11px;color:var(--red);background:var(--red-bg);padding:7px 10px;border-radius:6px;margin-bottom:14px;display:none}
+.auth-error.show{display:block}
+
+.autocomplete-wrap{position:relative}
+.autocomplete-list{position:absolute;top:100%;left:0;min-width:260px;background:var(--surface);border:0.5px solid var(--border-s);border-radius:6px;max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 4px 14px rgba(0,0,0,0.12);margin-top:2px}
+.autocomplete-item{padding:6px 9px;font-size:11px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.autocomplete-item:hover,.autocomplete-item.hi{background:var(--bg2)}
+.autocomplete-item .ac-code{font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0}
+.autocomplete-item .ac-name{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.user-menu{position:relative}
+.user-chip{display:flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border-radius:20px;background:var(--bg2);cursor:pointer;border:0.5px solid var(--border)}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-t);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+.user-name{font-size:11px;color:var(--text)}
+.user-dropdown{position:absolute;top:32px;right:0;background:var(--surface);border:0.5px solid var(--border-s);border-radius:8px;min-width:170px;box-shadow:0 4px 14px rgba(0,0,0,0.12);overflow:hidden;z-index:60}
+.user-dropdown-item{padding:9px 12px;font-size:12px;color:var(--text);cursor:pointer}
+.user-dropdown-item:hover{background:var(--bg2)}
+.user-dropdown-item.danger{color:var(--red)}
+.user-dropdown-sep{border-top:0.5px solid var(--border)}
+</style>
+
+</head>
+<body>
+
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ I18N ============
+const I18N = {
+  tr: {
+    appName:'IFRS Workbench', allBalanced:'Tüm kayıtlar dengede', hasImbalance:'Dengesiz kayıt var',
+    navData:'Veri', navWork:'Çalışma', navOutput:'Çıktı',
+    navMizan:'Mizan', navFa:'Sabit kıymetler', navEtb:'ETB aktüeryal',
+    navMapping:'Hesap eşleştirme', navCarry:'Carry', navAje:'AJE', navRje:'RJE', navWtb:'WTB',
+    navDt:'Deferred tax', navFs:'IFRS tablolar', navExport:'Export',
+    mizanTitle:'Mizan', pasteCsv:'Yapıştır / CSV', cyRowCount:'CY satır sayısı', pyRowCount:'PY satır sayısı',
+    balanceLbl:'Denge', debitCredit:'Borç − Alacak', code:'Kod', accName:'Hesap adı', balance:'Bakiye',
+    cyTab:'CY 2025', pyTab:'PY 2024', codeLinkNote:'Hesap kodu = WTB ile bağlantı anahtarı', amountsTl:'Tutarlar: TL',
+    faTitle:'FA schedule — Sabit kıymetler', faAutoFlow:'AJE\'ye otomatik akar', totalCost:'Toplam maliyet',
+    assetCount:'Kıymet sayısı', pcs:'adet', vukDiffAje:'VUK farkı → AJE', locked:'kilitli',
+    iasTitle:'IAS 16 — Gün bazlı amortisman hesabı', formula:'Formül', assetName:'Kıymet adı', costCode:'Maliyet kod',
+    cost:'Maliyet', activationDate:'Aktiv. tarihi', life:'Ömür', ifrsDep:'IFRS amor.', statDep:'VUK amor.', diff:'Fark',
+    total:'Toplam', faLockNote:'🔒 Fark kolonu otomatik AJE oluşturur, manuel düzenlenemez', dayNote:'Gün = aktivasyon tarihinden dönem sonuna, yıl içi kıst',
+    addAsset:'Kıymet ekle', name:'Ad', depCode:'Amor. kod', addBtn:'+ Ekle',
+    etbTitle:'ETB aktüeryal veriler (IAS 19)', saveGenAje:'Kaydet ve AJE üret', manualEntry:'Manuel giriş',
+    assumptions:'VARSAYIMLAR', results:'SONUÇLAR', discountRate:'İskonto oranı (%)', salaryIncrease:'Maaş artış oranı (%)',
+    turnoverRate:'İşten ayrılma oranı (%)', employeeCount:'Çalışan sayısı', dbo:'DBO (kıdem yükümlülüğü)',
+    serviceCost:'Cari hizmet maliyeti', interestCost:'Faiz maliyeti', ociRemeasure:'Yeniden ölçüm (OCI)',
+    etbLockNote:'DBO → AJE-04 olarak otomatik gider, kilitli', accCodeLbl:'Hesap kodu',
+    mappingTitle:'Hesap kodu → IFRS eşleştirmesi', unmapped:'eşleşmemiş', completed:'Tamamlandı', addAccount:'+ Hesap kodu ekle',
+    mappingTbl:'Eşleştirme tablosu', accounts:'hesap', cyBalance:'CY bakiye', ifrsLine:'IFRS satırı', note:'Not',
+    chooseOption:'— seçiniz —', unmappedNote:'Turuncu satır = IFRS satırı atanmamış', noteRefNote:'Not numarası → finansal tablo dipnotlarına bağlanır',
+    journalBalanced:'Dengede', journalImbalance:'Fark', addManualEntry:'+ Manuel kayıt', recordGroups:'kayıt grubu',
+    ref:'Ref', accCode:'Hesap kodu', description:'Açıklama', dr:'Dr', cr:'Cr', source:'Kaynak', noEntries:'Henüz kayıt yok',
+    totalDr:'Toplam Dr', totalCr:'Toplam Cr', netLbl:'Net', autoLockedNote:'= otomatik kaynaktan, düzenlenemez',
+    carryTitle:'Carry — Açılış kayıtları', carryBalance:'Bilanço ↔ Geçmiş yıl kârı/zararı dengesi',
+    ajeTitle:'AJE — Düzeltme kayıtları', ajeBalance:'Bilanço ↔ Gelir tablosu dengesi',
+    rjeTitle:'RJE — Sınıflandırma kayıtları', rjeBalance:'Bilanço↔Bilanço veya Gelir tablosu↔Gelir tablosu dengesi',
+    wtbTitle:'Working Trial Balance', readOnly:'🔒 Salt okunur — tamamen formül', wtbAllCols:'WTB — tüm kolonlar',
+    statutoryTb:'Statutory (TB)', netDrCr:'Net (Dr−Cr)', ifrsBalance:'IFRS balance',
+    wtbRowNote:'Her satır = WTB!D kolonu hesap kodu', sumifNote:'Carry/AJE/RJE = SUMIF(kaynak.Kod, kod)',
+    totalStatNet:'Toplam (statutory net)',
+    dtTitle:'Deferred tax hesaplama', taxRateLbl:'Vergi oranı', taxRateSub:'Kurumlar vergisi', dtaLbl:'DTA', dtlLbl:'DTL',
+    tempDiffAnalysis:'Geçici fark analizi', autoFromWtb:'Otomatik · WTB\'den', statRje:'Statutory+RJE', rate:'Oran',
+    defTax:'Def. vergi', cls:'Sınıf', noTempDiff:'Geçici fark bulunamadı', net:'Net',
+    diffFormulaNote:'Fark = IFRS bakiye − (Statutory + RJE)', defTaxFormulaNote:'Def. vergi = fark × oran × (−1)',
+    fsTitle:'IFRS finansal tablolar', autoFromWtb2:'🔒 WTB\'den otomatik', bsTitle:'Finansal durum tablosu',
+    isTitle:'Kapsamlı gelir tablosu', item:'Kalem', assetsHdr:'Varlıklar', liabHdr:'Yükümlülükler', equityHdr:'Özkaynaklar',
+    defTaxAsset:'Ertelenmiş vergi varlığı', defTaxLiab:'Ertelenmiş vergi borcu', noteRefSource:'Not numaraları mapping ekranından gelir',
+    exportTitle:'Export', exportXlsxTitle:'WTB — Excel (.xlsx)', exportXlsxSub:'Cover, TB_CY, TB_PY, Mapping, FA_Schedule, Carry, AJE, RJE, WTB, Def.Tax, FS_Output',
+    exportPdfTitle:'IFRS finansal tablolar — PDF', exportPdfSub:'Bilanço, GKT, dipnot referansları',
+    exportLeadTitle:'PwC WTB lead schedule — PDF', exportLeadSub:'AJE/RJE referanslı, standart Big4 formatı', download:'⬇ İndir',
+    manual:'Manuel', allFields:'Tüm alanları doldurun', assetAdded:'Kıymet eklendi, AJE güncellendi',
+    etbSaved:'ETB verileri kaydedildi, AJE güncellendi', taxRateUpdated:'Vergi oranı güncellendi',
+    entryDeleted:'Kayıt silindi', exportInfo:'Export, gerçek uygulamada sunucu tarafında Excel/PDF üretir',
+    pasteInfo:'Bu demo sabit veri kullanıyor — gerçek uygulamada CSV/yapıştırma ile mizan yüklenir',
+    addAccountInfo:'Gerçek uygulamada yeni hesap kodu burada eklenir',
+    companyLabel:'Örnek Sanayi A.Ş. · WTB',
+    authLoginTitle:'Tekrar hoş geldiniz', authLoginSub:'Hesabınıza giriş yapın',
+    authSignupTitle:'Hesap oluştur', authSignupSub:'Şirketinizin IFRS raporlama alanını kurun',
+    fullName:'Ad Soyad', companyName:'Şirket adı', email:'E-posta', password:'Şifre',
+    loginBtn:'Giriş yap', signupBtn:'Hesap oluştur', noAccount:'Hesabınız yok mu?', haveAccount:'Zaten hesabınız var mı?',
+    signupLink:'Kayıt olun', loginLink:'Giriş yapın', fillAllFields:'Tüm alanları doldurun',
+    invalidEmail:'Geçerli bir e-posta girin', shortPassword:'Şifre en az 6 karakter olmalı',
+    logout:'Çıkış yap', account:'Hesap', searchAccPlaceholder:'Hesap kodu veya adı yazın...'
+  },
+  en: {
+    appName:'IFRS Workbench', allBalanced:'All entries balanced', hasImbalance:'Imbalanced entry detected',
+    navData:'Data', navWork:'Workspace', navOutput:'Output',
+    navMizan:'Trial balance', navFa:'Fixed assets', navEtb:'Actuarial (EOSB)',
+    navMapping:'Account mapping', navCarry:'Carry', navAje:'AJE', navRje:'RJE', navWtb:'WTB',
+    navDt:'Deferred tax', navFs:'IFRS statements', navExport:'Export',
+    mizanTitle:'Trial balance', pasteCsv:'Paste / CSV', cyRowCount:'CY row count', pyRowCount:'PY row count',
+    balanceLbl:'Balance', debitCredit:'Debit − Credit', code:'Code', accName:'Account name', balance:'Balance',
+    cyTab:'CY 2025', pyTab:'PY 2024', codeLinkNote:'Account code = link key to WTB', amountsTl:'Amounts: TL',
+    faTitle:'FA schedule — Fixed assets', faAutoFlow:'Flows to AJE automatically', totalCost:'Total cost',
+    assetCount:'Asset count', pcs:'items', vukDiffAje:'Statutory diff → AJE', locked:'locked',
+    iasTitle:'IAS 16 — Day-count depreciation', formula:'Formula', assetName:'Asset name', costCode:'Cost code',
+    cost:'Cost', activationDate:'Activation date', life:'Useful life', ifrsDep:'IFRS dep.', statDep:'Stat. dep.', diff:'Difference',
+    total:'Total', faLockNote:'🔒 Difference column auto-generates AJE, cannot be edited manually', dayNote:'Days = from activation date to period end, pro-rated',
+    addAsset:'Add asset', name:'Name', depCode:'Dep. code', addBtn:'+ Add',
+    etbTitle:'Actuarial data (IAS 19)', saveGenAje:'Save and generate AJE', manualEntry:'Manual entry',
+    assumptions:'ASSUMPTIONS', results:'RESULTS', discountRate:'Discount rate (%)', salaryIncrease:'Salary increase rate (%)',
+    turnoverRate:'Turnover rate (%)', employeeCount:'Employee count', dbo:'DBO (benefit obligation)',
+    serviceCost:'Current service cost', interestCost:'Interest cost', ociRemeasure:'Remeasurement (OCI)',
+    etbLockNote:'DBO flows automatically to AJE-04, locked', accCodeLbl:'Account code',
+    mappingTitle:'Account code → IFRS mapping', unmapped:'unmapped', completed:'Complete', addAccount:'+ Add account code',
+    mappingTbl:'Mapping table', accounts:'accounts', cyBalance:'CY balance', ifrsLine:'IFRS line', note:'Note',
+    chooseOption:'— select —', unmappedNote:'Orange row = IFRS line not assigned', noteRefNote:'Note number links to financial statement footnotes',
+    journalBalanced:'Balanced', journalImbalance:'Diff', addManualEntry:'+ Manual entry', recordGroups:'entry groups',
+    ref:'Ref', accCode:'Account code', description:'Description', dr:'Dr', cr:'Cr', source:'Source', noEntries:'No entries yet',
+    totalDr:'Total Dr', totalCr:'Total Cr', netLbl:'Net', autoLockedNote:'= from automated source, cannot be edited',
+    carryTitle:'Carry — Opening entries', carryBalance:'Balance sheet ↔ Retained earnings balance',
+    ajeTitle:'AJE — Adjustment entries', ajeBalance:'Balance sheet ↔ Income statement balance',
+    rjeTitle:'RJE — Reclassification entries', rjeBalance:'Balance sheet↔Balance sheet or Income statement↔Income statement balance',
+    wtbTitle:'Working Trial Balance', readOnly:'🔒 Read-only — fully formula-driven', wtbAllCols:'WTB — all columns',
+    statutoryTb:'Statutory (TB)', netDrCr:'Net (Dr−Cr)', ifrsBalance:'IFRS balance',
+    wtbRowNote:'Each row = WTB!D column account code', sumifNote:'Carry/AJE/RJE = SUMIF(source.Code, code)',
+    totalStatNet:'Total (statutory net)',
+    dtTitle:'Deferred tax calculation', taxRateLbl:'Tax rate', taxRateSub:'Corporate tax', dtaLbl:'DTA', dtlLbl:'DTL',
+    tempDiffAnalysis:'Temporary difference analysis', autoFromWtb:'Automatic · from WTB', statRje:'Statutory+RJE', rate:'Rate',
+    defTax:'Def. tax', cls:'Class', noTempDiff:'No temporary difference found', net:'Net',
+    diffFormulaNote:'Diff = IFRS balance − (Statutory + RJE)', defTaxFormulaNote:'Def. tax = diff × rate × (−1)',
+    fsTitle:'IFRS financial statements', autoFromWtb2:'🔒 Automatic from WTB', bsTitle:'Statement of financial position',
+    isTitle:'Statement of comprehensive income', item:'Item', assetsHdr:'Assets', liabHdr:'Liabilities', equityHdr:'Equity',
+    defTaxAsset:'Deferred tax asset', defTaxLiab:'Deferred tax liability', noteRefSource:'Note numbers come from the mapping screen',
+    exportTitle:'Export', exportXlsxTitle:'WTB — Excel (.xlsx)', exportXlsxSub:'Cover, TB_CY, TB_PY, Mapping, FA_Schedule, Carry, AJE, RJE, WTB, Def.Tax, FS_Output',
+    exportPdfTitle:'IFRS financial statements — PDF', exportPdfSub:'Balance sheet, P&L, footnote references',
+    exportLeadTitle:'PwC WTB lead schedule — PDF', exportLeadSub:'AJE/RJE referenced, standard Big4 format', download:'⬇ Download',
+    manual:'Manual', allFields:'Fill in all fields', assetAdded:'Asset added, AJE updated',
+    etbSaved:'Actuarial data saved, AJE updated', taxRateUpdated:'Tax rate updated',
+    entryDeleted:'Entry deleted', exportInfo:'Export generates Excel/PDF server-side in the real application',
+    pasteInfo:'This demo uses fixed data — the real application loads trial balance via CSV/paste',
+    addAccountInfo:'New account codes are added here in the real application',
+    companyLabel:'Example Industries Inc. · WTB',
+    authLoginTitle:'Welcome back', authLoginSub:'Sign in to your account',
+    authSignupTitle:'Create an account', authSignupSub:'Set up your company\'s IFRS reporting workspace',
+    fullName:'Full name', companyName:'Company name', email:'Email', password:'Password',
+    loginBtn:'Sign in', signupBtn:'Create account', noAccount:"Don't have an account?", haveAccount:'Already have an account?',
+    signupLink:'Sign up', loginLink:'Sign in', fillAllFields:'Please fill in all fields',
+    invalidEmail:'Enter a valid email address', shortPassword:'Password must be at least 6 characters',
+    logout:'Log out', account:'Account', searchAccPlaceholder:'Type account code or name...'
+  }
+};
+function t(key) { return (I18N[state.lang] && I18N[state.lang][key]) || I18N.tr[key] || key; }
+
+// IFRS line labels used across the account map — translates the Turkish canonical
+// value (stored on each account) to English for display when state.lang === 'en'.
+const IFRS_LINE_EN = {
+  'Diğer':'Other',
+  'Diğer dönen varlıklar':'Other current assets',
+  'Diğer faaliyet gelirleri':'Other operating income',
+  'Diğer faaliyet giderleri':'Other operating expenses',
+  'Diğer kapsamlı gelir':'Other comprehensive income',
+  'Diğer kısa vadeli yükümlülükler':'Other current liabilities',
+  'Dönem net kârı':'Net profit for the period',
+  'Finansal borçlar':'Financial liabilities',
+  'Finansman gelirleri':'Finance income',
+  'Finansman giderleri':'Finance costs',
+  'Gelir vergisi gideri':'Income tax expense',
+  'Genel yönetim giderleri':'Administrative expenses',
+  'Geçmiş yıl kârları':'Retained earnings',
+  'Hasılat':'Revenue',
+  'Impairment':'Impairment',
+  'Karşılıklar':'Provisions',
+  'Kur farkı gelir/gideri':'Foreign exchange gain/loss',
+  'Maddi duran varlıklar':'Property, plant and equipment',
+  'Maddi olmayan duran varlıklar':'Intangible assets',
+  'Nakit ve nakit benzerleri':'Cash and cash equivalents',
+  'Pazarlama, satış ve dağıtım giderleri':'Selling and distribution expenses',
+  'Satışların maliyeti':'Cost of sales',
+  'Stoklar':'Inventories',
+  'Ticari alacaklar':'Trade receivables',
+  'Ticari borçlar':'Trade payables',
+  'Uzun vadeli yükümlülükler':'Non-current liabilities',
+  'Warranty':'Warranty',
+  'Çalışanlara sağlanan faydalar':'Employee benefit obligations',
+  'Özkaynaklar':'Equity'
+};
+function ifrsLineLabel(tr) {
+  if (!tr) return tr;
+  return state.lang === 'en' ? (IFRS_LINE_EN[tr] || tr) : tr;
+}
+
+/*
+WTB Calculation Engine
+Mirrors the real PwC-style Excel WTB workbook logic:
+  - WTB sheet: one row per statutory account code (D column = key)
+  - Carry / AJE / RJE: journal-entry-style sheets, each row has
+    {adjNo, accountCode, description, debit, credit}
+    description is auto-derived from the account map (VLOOKUP),
+    debit/credit are user input UNLESS the row is sourced from an
+    automated module (FA schedule, ETB/actuarial), in which case the
+    amount is locked and flows in from that module.
+  - WTB.IFRS balance = Statutory + CarryDr - CarryCr + AjeDr - AjeCr + RjeDr - RjeCr
+  - Def. Tax: compares (Statutory + RJE) vs IFRS balance per account, * tax rate
+  - Output statements (BBS/IIS): group WTB rows by account-code ranges into
+    presentation line items
+*/
+
+// ---------- Account map ----------
+// Company-agnostic: loaded per company. Each entry keyed by accountCode.
+class AccountMap {
+  constructor(rows = []) {
+    this.byCode = new Map();
+    rows.forEach(r => this.add(r));
+  }
+  add(row) {
+    this.byCode.set(String(row.accountCode), row);
+  }
+  describe(code) {
+    const r = this.byCode.get(String(code));
+    return r ? r.accountName : null;
+  }
+  get(code) {
+    return this.byCode.get(String(code)) || null;
+  }
+  all() {
+    return Array.from(this.byCode.values());
+  }
+}
+
+// ---------- Journal sheets (Carry / AJE / RJE) ----------
+// balanceRule: 'bs_re'   -> Carry: balance sheet vs retained earnings
+//              'bs_is'   -> AJE: balance sheet vs income statement
+//              'bs_bs'   -> RJE: balance sheet vs balance sheet
+//              'is_is'   -> RJE: income statement vs income statement
+class JournalSheet {
+  constructor(name, balanceRules) {
+    this.name = name;
+    this.balanceRules = balanceRules; // array of allowed rule keys
+    this.entries = []; // {adjNo, groupLabel, accountCode, description, debit, credit, source, locked}
+  }
+
+  addEntry({ adjNo, groupLabel, accountCode, debit = 0, credit = 0, source = 'manual', locked = false, comment = '' }) {
+    this.entries.push({ adjNo, groupLabel, accountCode: String(accountCode), debit, credit, source, locked, comment });
+  }
+
+  // mirrors =SUMIF(B:B, code, D:D) and =SUMIF(B:B, code, E:E)
+  sumForCode(code) {
+    const target = String(code);
+    let debit = 0, credit = 0;
+    for (const e of this.entries) {
+      if (e.accountCode === target) {
+        debit += e.debit || 0;
+        credit += e.credit || 0;
+      }
+    }
+    return { debit, credit };
+  }
+
+  // mirrors the Check sheet: =SUM(D:D)-SUM(E:E), should be 0 when balanced
+  checkBalance() {
+    const debit = this.entries.reduce((s, e) => s + (e.debit || 0), 0);
+    const credit = this.entries.reduce((s, e) => s + (e.credit || 0), 0);
+    return { debit, credit, diff: round2(debit - credit) };
+  }
+
+  groupedByAdjNo() {
+    const groups = new Map();
+    for (const e of this.entries) {
+      const key = e.adjNo ?? '—';
+      if (!groups.has(key)) groups.set(key, { adjNo: key, label: e.groupLabel || '', rows: [] });
+      groups.get(key).rows.push(e);
+    }
+    return Array.from(groups.values());
+  }
+}
+
+// ---------- Trial balance (statutory, raw ledger) ----------
+class TrialBalance {
+  constructor(rows = []) {
+    // rows: {accountCode, debit, credit}
+    this.byCode = new Map();
+    rows.forEach(r => {
+      const code = String(r.accountCode);
+      const existing = this.byCode.get(code) || { debit: 0, credit: 0 };
+      existing.debit += r.debit || 0;
+      existing.credit += r.credit || 0;
+      this.byCode.set(code, existing);
+    });
+  }
+  // mirrors VLOOKUP into Detailed TB balance column (net, signed)
+  balanceForCode(code) {
+    const r = this.byCode.get(String(code));
+    if (!r) return 0;
+    return round2(r.debit - r.credit);
+  }
+  checkBalance() {
+    let debit = 0, credit = 0;
+    for (const v of this.byCode.values()) { debit += v.debit; credit += v.credit; }
+    return { debit, credit, diff: round2(debit - credit) };
+  }
+}
+
+// ---------- WTB structure rows ----------
+// Each structure row mirrors columns A-E of the real WTB sheet:
+// section (A), groupCode (B), groupLabel (C), accountCode (D), accountName (E)
+class WtbStructure {
+  constructor(rows = []) {
+    this.rows = rows;
+  }
+  static fromAccountMap(accountMap) {
+    return new WtbStructure(accountMap.all().map(r => ({
+      section: r.section,
+      groupCode: r.groupCode,
+      groupLabel: r.groupLabel,
+      accountCode: String(r.accountCode),
+      accountName: r.accountName,
+      ifrsLine: r.ifrsLine || null,
+      noteRef: r.noteRef || null
+    })));
+  }
+}
+
+// ---------- The WTB engine itself ----------
+class WtbEngine {
+  constructor({ accountMap, trialBalancePY = null, trialBalanceCY, carry, aje, rje }) {
+    this.accountMap = accountMap;
+    this.structure = WtbStructure.fromAccountMap(accountMap);
+    this.tbPY = trialBalancePY ? new TrialBalance(trialBalancePY) : null;
+    this.tbCY = new TrialBalance(trialBalanceCY);
+    this.carry = carry;   // JournalSheet
+    this.aje = aje;       // JournalSheet
+    this.rje = rje;       // JournalSheet
+  }
+
+  // Builds the full WTB row-by-row, exactly mirroring columns F..M of the real sheet
+  computeRows() {
+    return this.structure.rows.map(s => {
+      const statutory = this.tbCY.balanceForCode(s.accountCode);
+      const statutoryPY = this.tbPY ? this.tbPY.balanceForCode(s.accountCode) : null;
+
+      const carrySum = this.carry.sumForCode(s.accountCode);
+      const ajeSum = this.aje.sumForCode(s.accountCode);
+      const rjeSum = this.rje.sumForCode(s.accountCode);
+
+      // F + G - H + I - J + K - L = M
+      const ifrsBalance = round2(
+        statutory
+        + carrySum.debit - carrySum.credit
+        + ajeSum.debit - ajeSum.credit
+        + rjeSum.debit - rjeSum.credit
+      );
+
+      return {
+        section: s.section,
+        groupCode: s.groupCode,
+        groupLabel: s.groupLabel,
+        accountCode: s.accountCode,
+        accountName: s.accountName,
+        ifrsLine: s.ifrsLine,
+        noteRef: s.noteRef,
+        statutory,
+        statutoryPY,
+        carryDr: carrySum.debit,
+        carryCr: carrySum.credit,
+        ajeDr: ajeSum.debit,
+        ajeCr: ajeSum.credit,
+        rjeDr: rjeSum.debit,
+        rjeCr: rjeSum.credit,
+        ifrsBalance
+      };
+    });
+  }
+
+  // mirrors grouping like BBSF/BBS: aggregate computed rows by ifrsLine
+  groupByIfrsLine() {
+    const rows = this.computeRows();
+    const groups = new Map();
+    for (const r of rows) {
+      const key = r.ifrsLine || '(eşlenmemiş)';
+      if (!groups.has(key)) groups.set(key, { ifrsLine: key, total: 0, totalPY: 0, accounts: [] });
+      const g = groups.get(key);
+      g.total = round2(g.total + r.ifrsBalance);
+      g.totalPY = round2(g.totalPY + (r.statutoryPY || 0));
+      g.accounts.push(r);
+    }
+    return Array.from(groups.values());
+  }
+
+  // overall WTB balance check: sum of all IFRS balances should net to ~0
+  // (assets+liabilities+equity sign convention dependent; exposed for UI)
+  checkAll() {
+    return {
+      tbCY: this.tbCY.checkBalance(),
+      tbPY: this.tbPY ? this.tbPY.checkBalance() : null,
+      carry: this.carry.checkBalance(),
+      aje: this.aje.checkBalance(),
+      rje: this.rje.checkBalance()
+    };
+  }
+}
+
+// ---------- Deferred tax module ----------
+// mirrors Def. Tax Calculation: compares (Statutory + RJE) vs IFRS balance, * rate
+class DeferredTaxEngine {
+  constructor(wtbEngine, taxRateByAccount = {}, defaultRate = 0.25) {
+    this.wtb = wtbEngine;
+    this.taxRateByAccount = taxRateByAccount; // {accountCode: rate}
+    this.defaultRate = defaultRate;
+  }
+
+  computeRows() {
+    const rows = this.wtb.computeRows();
+    return rows.map(r => {
+      const statPlusRje = round2(r.statutory + r.rjeDr - r.rjeCr);
+      const difference = round2(r.ifrsBalance - statPlusRje);
+      const rate = this.taxRateByAccount[r.accountCode] ?? this.defaultRate;
+      const defTaxAmount = round2(difference * rate * -1);
+      const classification = defTaxAmount < 0 ? 'Deferred Tax Liabilities' : 'Deferred Tax Assets';
+      return {
+        ...r,
+        statPlusRje,
+        difference,
+        rate,
+        defTaxAmount,
+        classification
+      };
+    });
+  }
+
+  summary() {
+    const rows = this.computeRows();
+    const dta = round2(rows.filter(r => r.defTaxAmount > 0).reduce((s, r) => s + r.defTaxAmount, 0));
+    const dtl = round2(rows.filter(r => r.defTaxAmount < 0).reduce((s, r) => s + r.defTaxAmount, 0));
+    return { dta, dtl, net: round2(dta + dtl) };
+  }
+}
+
+// ---------- FA schedule (feeds AJE automatically, locked) ----------
+// IAS 16 day-count depreciation vs statutory (VUK) depreciation
+class FaScheduleEngine {
+  constructor(assets = []) {
+    // assets: {name, accountCodeCost, accountCodeAccDep, cost, activationDate, usefulLifeYears, statutoryAnnualDep, periodEndDate}
+    this.assets = assets;
+  }
+
+  static daysBetween(d1, d2) {
+    const ms = d2.getTime() - d1.getTime();
+    return Math.max(0, Math.round(ms / 86400000));
+  }
+
+  computeRows(periodEndDate) {
+    return this.assets.map(a => {
+      const start = new Date(a.activationDate);
+      const end = new Date(periodEndDate);
+      const fiscalYearStart = new Date(end.getFullYear(), 0, 1);
+      const depStart = start > fiscalYearStart ? start : fiscalYearStart;
+      const daysInPeriod = FaScheduleEngine.daysBetween(depStart, end) + (depStart <= end ? 1 : 0);
+      const daysInYear = (end.getFullYear() % 4 === 0 && (end.getFullYear() % 100 !== 0 || end.getFullYear() % 400 === 0)) ? 366 : 365;
+      const annualDep = round2(a.cost / a.usefulLifeYears);
+      const ifrsDep = round2(annualDep * daysInPeriod / daysInYear);
+      const statutoryDep = round2(a.statutoryAnnualDep ?? annualDep);
+      const diff = round2(ifrsDep - statutoryDep);
+      return {
+        name: a.name,
+        accountCodeCost: a.accountCodeCost,
+        accountCodeAccDep: a.accountCodeAccDep,
+        cost: a.cost,
+        activationDate: a.activationDate,
+        usefulLifeYears: a.usefulLifeYears,
+        daysInPeriod,
+        ifrsDep,
+        statutoryDep,
+        diff
+      };
+    });
+  }
+
+  // produces locked AJE-ready entries: diff > 0 means IFRS dep higher -> Dr expense / Cr acc.dep
+  // expenseAccountCode: where the offsetting P&L depreciation expense line sits
+  toAjeEntries(periodEndDate, adjNoStart = 1, expenseAccountCode = null) {
+    const rows = this.computeRows(periodEndDate);
+    const entries = [];
+    let adjNo = adjNoStart;
+    rows.forEach(r => {
+      if (Math.abs(r.diff) < 0.5) return;
+      const expAcc = expenseAccountCode || r.expenseAccountCode || r.accountCodeAccDep;
+      const label = `IAS 16 — ${r.name} amortisman farkı`;
+      if (r.diff > 0) {
+        // IFRS depreciation higher: Dr expense, Cr accumulated depreciation
+        entries.push({ adjNo, groupLabel: label, accountCode: expAcc, debit: r.diff, credit: 0, source: 'fa_schedule', locked: true });
+        entries.push({ adjNo, groupLabel: label, accountCode: r.accountCodeAccDep, debit: 0, credit: r.diff, source: 'fa_schedule', locked: true });
+      } else {
+        // statutory depreciation higher: reverse direction
+        entries.push({ adjNo, groupLabel: label, accountCode: r.accountCodeAccDep, debit: -r.diff, credit: 0, source: 'fa_schedule', locked: true });
+        entries.push({ adjNo, groupLabel: label, accountCode: expAcc, debit: 0, credit: -r.diff, source: 'fa_schedule', locked: true });
+      }
+      adjNo++;
+    });
+    return entries;
+  }
+}
+
+function round2(n) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+// ============ DEMO DATA (structure mirrors real workbook, values simplified) ============
+const DEMO_ACCOUNT_ROWS = [
+  { accountCode:20050, accountName:"Tesis, makine ve cihazlar - Maliyet", section:"Non-current assets", groupCode:20050, groupLabel:"Tesis, makine ve cihazlar - Maliyet", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:20140, accountName:"Yapılmakta olan yatırımlar - Maliyet", section:"Non-current assets", groupCode:20140, groupLabel:"Yapılmakta olan yatırımlar - Maliyet", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:20060, accountName:"Tesis, makine ve cihazlar - Birikmiş amortisman", section:"Non-current assets", groupCode:20060, groupLabel:"Tesis, makine ve cihazlar - Birikmiş amortisman", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:20110, accountName:"Demirbaşlar - Maliyet", section:"Non-current assets", groupCode:20110, groupLabel:"Demirbaşlar - Maliyet", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:20120, accountName:"Demirbaşlar - Birikmiş amortisman", section:"Non-current assets", groupCode:20120, groupLabel:"Demirbaşlar - Birikmiş amortisman", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:20470, accountName:"Geliştirme maliyetleri - Maliyet", section:"Non-current assets", groupCode:20470, groupLabel:"Geliştirme maliyetleri - Maliyet", ifrsLine:"Maddi olmayan duran varlıklar", noteRef:null },
+  { accountCode:20360, accountName:"Lisanslar - Birikmiş itfa", section:"Non-current assets", groupCode:20360, groupLabel:"Lisanslar - Birikmiş itfa", ifrsLine:"Maddi olmayan duran varlıklar", noteRef:null },
+  { accountCode:20000, accountName:"Arsa - Maliyet", section:"Non-current assets", groupCode:20000, groupLabel:"Arsa - Maliyet", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:21800, accountName:"Ticari alacaklar - İlişkili olmayan", section:"Current assets", groupCode:21800, groupLabel:"Ticari alacaklar - İlişkili olmayan", ifrsLine:"Ticari alacaklar", noteRef:null },
+  { accountCode:21520, accountName:"Yarı mamuller", section:"Current assets", groupCode:21520, groupLabel:"Yarı mamuller", ifrsLine:"Stoklar", noteRef:null },
+  { accountCode:21500, accountName:"Hammadde stokları", section:"Current assets", groupCode:21500, groupLabel:"Hammadde stokları", ifrsLine:"Stoklar", noteRef:null },
+  { accountCode:22510, accountName:"Kısa vadeli banka mevduatları", section:"Current assets", groupCode:22510, groupLabel:"Kısa vadeli banka mevduatları", ifrsLine:"Nakit ve nakit benzerleri", noteRef:null },
+  { accountCode:21560, accountName:"Yedek parça stokları", section:"Current assets", groupCode:21560, groupLabel:"Yedek parça stokları", ifrsLine:"Stoklar", noteRef:null },
+  { accountCode:22000, accountName:"Devreden KDV", section:"Current assets", groupCode:22000, groupLabel:"Devreden KDV", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:21530, accountName:"Mamul stokları", section:"Current assets", groupCode:21530, groupLabel:"Mamul stokları", ifrsLine:"Stoklar", noteRef:null },
+  { accountCode:21900, accountName:"Peşin ödenen giderler ve avanslar", section:"Current assets", groupCode:21900, groupLabel:"Peşin ödenen giderler ve avanslar", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:24810, accountName:"Uzun vadeli banka kredileri", section:"Non-current liability", groupCode:24810, groupLabel:"Uzun vadeli banka kredileri", ifrsLine:"Finansal borçlar", noteRef:null },
+  { accountCode:25410, accountName:"Diğer çalışan sonrası fayda yükümlülükleri", section:"Non-current liability", groupCode:25410, groupLabel:"Diğer çalışan sonrası fayda yükümlülükleri", ifrsLine:"Çalışanlara sağlanan faydalar", noteRef:null },
+  { accountCode:25500, accountName:"Ürün garanti karşılığı", section:"Non-current liability", groupCode:25500, groupLabel:"Ürün garanti karşılığı", ifrsLine:"Karşılıklar", noteRef:null },
+  { accountCode:25520, accountName:"Kıdem teşvik karşılığı", section:"Non-current liability", groupCode:25520, groupLabel:"Kıdem teşvik karşılığı", ifrsLine:"Karşılıklar", noteRef:null },
+  { accountCode:25700, accountName:"Ticari borçlar", section:"Current liabilities", groupCode:25700, groupLabel:"Ticari borçlar", ifrsLine:"Ticari borçlar", noteRef:null },
+  { accountCode:27310, accountName:"Kısa vadeli banka kredileri", section:"Current liabilities", groupCode:27310, groupLabel:"Kısa vadeli banka kredileri", ifrsLine:"Finansal borçlar", noteRef:null },
+  { accountCode:26300, accountName:"Ödenecek KDV", section:"Current liabilities", groupCode:26300, groupLabel:"Ödenecek KDV", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:27320, accountName:"Uzun vadeli kredilerin kısa vadeli kısmı", section:"Current liabilities", groupCode:27320, groupLabel:"Uzun vadeli kredilerin kısa vadeli kısmı", ifrsLine:"Finansal borçlar", noteRef:null },
+  { accountCode:26370, accountName:"Peşin tahsil edilen gelirler", section:"Current liabilities", groupCode:26370, groupLabel:"Peşin tahsil edilen gelirler", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:26000, accountName:"İkramiye tahakkukları", section:"Current liabilities", groupCode:26000, groupLabel:"İkramiye tahakkukları", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:26140, accountName:"Tahakkuk eden faiz giderleri", section:"Current liabilities", groupCode:26140, groupLabel:"Tahakkuk eden faiz giderleri", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:26160, accountName:"Diğer tahakkuklar", section:"Current liabilities", groupCode:26160, groupLabel:"Diğer tahakkuklar", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:23230, accountName:"Hisse senedi ihraç primleri", section:"Equity", groupCode:23230, groupLabel:"Hisse senedi ihraç primleri", ifrsLine:"Özkaynaklar", noteRef:null },
+  { accountCode:24200, accountName:"Geçmiş yıl kârları", section:"Equity", groupCode:24200, groupLabel:"Geçmiş yıl kârları", ifrsLine:"Geçmiş yıl kârları", noteRef:null },
+  { accountCode:24290, accountName:"Diğer transferler", section:"Equity", groupCode:24290, groupLabel:"Diğer transferler", ifrsLine:"Özkaynaklar", noteRef:null },
+  { accountCode:24210, accountName:"Dönem net kârı/(zararı)", section:"Equity", groupCode:24210, groupLabel:"Dönem net kârı/(zararı)", ifrsLine:"Dönem net kârı", noteRef:null },
+  { accountCode:23200, accountName:"Ödenmiş sermaye", section:"Equity", groupCode:23200, groupLabel:"Ödenmiş sermaye", ifrsLine:"Özkaynaklar", noteRef:null },
+  { accountCode:10000, accountName:"Yurt içi satışlar", section:"Revenue", groupCode:10000, groupLabel:"Yurt içi satışlar", ifrsLine:"Hasılat", noteRef:null },
+  { accountCode:10050, accountName:"İhracat satışları", section:"Revenue", groupCode:10050, groupLabel:"İhracat satışları", ifrsLine:"Hasılat", noteRef:null },
+  { accountCode:10200, accountName:"Satış iskontoları (-)", section:"Revenue", groupCode:10200, groupLabel:"Satış iskontoları (-)", ifrsLine:"Hasılat", noteRef:null },
+  { accountCode:10430, accountName:"Satılan malın maliyeti - hammadde", section:"Cogs", groupCode:10430, groupLabel:"Satılan malın maliyeti - hammadde", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:10420, accountName:"Satılan malın maliyeti - diğer", section:"Cogs", groupCode:10420, groupLabel:"Satılan malın maliyeti - diğer", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:10900, accountName:"Personel giderleri - maaş/ikramiye", section:"Cogs", groupCode:10900, groupLabel:"Personel giderleri - maaş/ikramiye", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:11250, accountName:"Üretim genel giderleri (değişken)", section:"Cogs", groupCode:11250, groupLabel:"Üretim genel giderleri (değişken)", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:11600, accountName:"Çeşitli gelirler", section:"Other income", groupCode:11600, groupLabel:"Çeşitli gelirler", ifrsLine:"Diğer faaliyet gelirleri", noteRef:null },
+  { accountCode:11830, accountName:"Kur farkı geliri/(gideri) - ihracat", section:"Fx", groupCode:11830, groupLabel:"Kur farkı geliri/(gideri) - ihracat", ifrsLine:"Kur farkı gelir/gideri", noteRef:null },
+  { accountCode:11900, accountName:"Ücret ve maaşlar", section:"Distribution", groupCode:11900, groupLabel:"Ücret ve maaşlar", ifrsLine:"Pazarlama, satış ve dağıtım giderleri", noteRef:null },
+  { accountCode:12050, accountName:"Diğer pazarlama giderleri", section:"Distribution", groupCode:12050, groupLabel:"Diğer pazarlama giderleri", ifrsLine:"Pazarlama, satış ve dağıtım giderleri", noteRef:null },
+  { accountCode:12100, accountName:"Ücret ve maaşlar", section:"Administration", groupCode:12100, groupLabel:"Ücret ve maaşlar", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:12500, accountName:"Danışmanlık giderleri", section:"Administration", groupCode:12500, groupLabel:"Danışmanlık giderleri", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:12530, accountName:"Araştırma ve geliştirme giderleri", section:"Administration", groupCode:12530, groupLabel:"Araştırma ve geliştirme giderleri", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:13190, accountName:"Diğer giderler", section:"Other expense", groupCode:13190, groupLabel:"Diğer giderler", ifrsLine:"Diğer faaliyet giderleri", noteRef:null },
+  { accountCode:13500, accountName:"Banka mevduatı faiz geliri", section:"Interest income", groupCode:13500, groupLabel:"Banka mevduatı faiz geliri", ifrsLine:"Finansman gelirleri", noteRef:null },
+  { accountCode:13720, accountName:"Ticari borçlar faiz gideri", section:"Interest expense", groupCode:13720, groupLabel:"Ticari borçlar faiz gideri", ifrsLine:"Finansman giderleri", noteRef:null },
+  { accountCode:13610, accountName:"Finansal kiralama faiz gideri", section:"Interest expense", groupCode:13610, groupLabel:"Finansal kiralama faiz gideri", ifrsLine:"Finansman giderleri", noteRef:null },
+  { accountCode:14400, accountName:"Geçici farkların oluşumu ve çözülmesi", section:"Tax expense", groupCode:14400, groupLabel:"Geçici farkların oluşumu ve çözülmesi", ifrsLine:"Gelir vergisi gideri", noteRef:null },
+  { accountCode:15100, accountName:"Aktüeryal kazanç/(kayıp) (OCI)", section:"Comprehensive income", groupCode:15100, groupLabel:"Aktüeryal kazanç/(kayıp) (OCI)", ifrsLine:"Diğer kapsamlı gelir", noteRef:null },
+  { accountCode:29900, accountName:"Diğer duran varlıklar (özet)", section:"Non-current assets", groupCode:29900, groupLabel:"Diğer duran varlıklar (özet)", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:29910, accountName:"Diğer dönen varlıklar (özet)", section:"Current assets", groupCode:29910, groupLabel:"Diğer dönen varlıklar (özet)", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:29920, accountName:"Diğer uzun vadeli yükümlülükler (özet)", section:"Non-current liability", groupCode:29920, groupLabel:"Diğer uzun vadeli yükümlülükler (özet)", ifrsLine:"Uzun vadeli yükümlülükler", noteRef:null },
+  { accountCode:29930, accountName:"Diğer kısa vadeli yükümlülükler (özet)", section:"Current liabilities", groupCode:29930, groupLabel:"Diğer kısa vadeli yükümlülükler (özet)", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:29940, accountName:"Diğer özkaynak kalemleri (özet)", section:"Equity", groupCode:29940, groupLabel:"Diğer özkaynak kalemleri (özet)", ifrsLine:"Özkaynaklar", noteRef:null },
+  { accountCode:29950, accountName:"Diğer hasılat kalemleri (özet)", section:"Revenue", groupCode:29950, groupLabel:"Diğer hasılat kalemleri (özet)", ifrsLine:"Hasılat", noteRef:null },
+  { accountCode:29960, accountName:"Diğer SMM kalemleri (özet)", section:"Cogs", groupCode:29960, groupLabel:"Diğer SMM kalemleri (özet)", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:29961, accountName:"Diğer gelirler (özet)", section:"Other income", groupCode:29961, groupLabel:"Diğer gelirler (özet)", ifrsLine:"Diğer faaliyet gelirleri", noteRef:null },
+  { accountCode:29962, accountName:"Kur farkı (özet)", section:"Fx", groupCode:29962, groupLabel:"Kur farkı (özet)", ifrsLine:"Kur farkı gelir/gideri", noteRef:null },
+  { accountCode:29963, accountName:"Diğer pazarlama giderleri (özet)", section:"Distribution", groupCode:29963, groupLabel:"Diğer pazarlama giderleri (özet)", ifrsLine:"Pazarlama, satış ve dağıtım giderleri", noteRef:null },
+  { accountCode:29964, accountName:"Diğer genel yönetim giderleri (özet)", section:"Administration", groupCode:29964, groupLabel:"Diğer genel yönetim giderleri (özet)", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:29965, accountName:"Garanti giderleri (özet)", section:"Warranty", groupCode:29965, groupLabel:"Garanti giderleri (özet)", ifrsLine:"Warranty", noteRef:null },
+  { accountCode:29966, accountName:"Değer düşüklüğü (özet)", section:"Impairment", groupCode:29966, groupLabel:"Değer düşüklüğü (özet)", ifrsLine:"Impairment", noteRef:null },
+  { accountCode:29967, accountName:"Diğer giderler (özet)", section:"Other expense", groupCode:29967, groupLabel:"Diğer giderler (özet)", ifrsLine:"Diğer faaliyet giderleri", noteRef:null },
+  { accountCode:29968, accountName:"Diğer faiz gelirleri (özet)", section:"Interest income", groupCode:29968, groupLabel:"Diğer faiz gelirleri (özet)", ifrsLine:"Finansman gelirleri", noteRef:null },
+  { accountCode:29969, accountName:"Diğer faiz giderleri (özet)", section:"Interest expense", groupCode:29969, groupLabel:"Diğer faiz giderleri (özet)", ifrsLine:"Finansman giderleri", noteRef:null },
+  { accountCode:29970, accountName:"Vergi giderleri (özet)", section:"Tax expense", groupCode:29970, groupLabel:"Vergi giderleri (özet)", ifrsLine:"Gelir vergisi gideri", noteRef:null },
+  { accountCode:29971, accountName:"Diğer kapsamlı gelir (özet)", section:"Comprehensive income", groupCode:29971, groupLabel:"Diğer kapsamlı gelir (özet)", ifrsLine:"Diğer kapsamlı gelir", noteRef:null },
+  { accountCode:12230, accountName:"Bilgisayar giderleri", section:"Administration", groupCode:12230, groupLabel:"Bilgisayar giderleri", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:11180, accountName:"Garanti karşılığı (oluşum/iptal)", section:"Cogs", groupCode:11180, groupLabel:"Garanti karşılığı (oluşum/iptal)", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:27620, accountName:"Turkey", section:"Current liabilities", groupCode:27620, groupLabel:"Turkey", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:20220, accountName:"Kalıp ve aparatlar - Birikmiş amortisman", section:"Non-current assets", groupCode:20220, groupLabel:"Kalıp ve aparatlar - Birikmiş amortisman", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:11720, accountName:"Gerçekleşmemiş kur farkı kâr/zararı", section:"Other income", groupCode:11720, groupLabel:"Gerçekleşmemiş kur farkı kâr/zararı", ifrsLine:"Diğer faaliyet gelirleri", noteRef:null },
+  { accountCode:22080, accountName:"Diğer borçlular", section:"Current assets", groupCode:22080, groupLabel:"Diğer borçlular", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:11200, accountName:"Garanti giderleri / talepleri", section:"Cogs", groupCode:11200, groupLabel:"Garanti giderleri / talepleri", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:27000, accountName:"Ürün garanti karşılığı", section:"Current liabilities", groupCode:27000, groupLabel:"Ürün garanti karşılığı", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:25950, accountName:"Stopaj vergisi tahakkuku", section:"Current liabilities", groupCode:25950, groupLabel:"Stopaj vergisi tahakkuku", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:22720, accountName:"Vergi alacağı", section:"Current assets", groupCode:22720, groupLabel:"Vergi alacağı", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:20210, accountName:"Kalıp ve aparatlar - Maliyet", section:"Non-current assets", groupCode:20210, groupLabel:"Kalıp ve aparatlar - Maliyet", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:20190, accountName:"Kullanım hakkı varlığı - Maliyet", section:"Non-current assets", groupCode:20190, groupLabel:"Kullanım hakkı varlığı - Maliyet", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:12550, accountName:"Amortisation of Intangibles", section:"Administration", groupCode:12550, groupLabel:"Amortisation of Intangibles", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:11285, accountName:"Other Production Related Costs", section:"Cogs", groupCode:11285, groupLabel:"Other Production Related Costs", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:20030, accountName:"Buildings - Accumulated Depreciation", section:"Non-current assets", groupCode:20030, groupLabel:"Buildings - Accumulated Depreciation", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:21100, accountName:"Ertelenmiş vergi varlığı", section:"Non-current assets", groupCode:21100, groupLabel:"Ertelenmiş vergi varlığı", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:12520, accountName:"Hukuki giderler", section:"Administration", groupCode:12520, groupLabel:"Hukuki giderler", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:20480, accountName:"Geliştirme maliyetleri - Birikmiş itfa", section:"Non-current assets", groupCode:20480, groupLabel:"Geliştirme maliyetleri - Birikmiş itfa", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:27070, accountName:"Hukuki davalar karşılığı", section:"Current liabilities", groupCode:27070, groupLabel:"Hukuki davalar karşılığı", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:22400, accountName:"Intercompany Trade Debtors Group Companies", section:"Current assets", groupCode:22400, groupLabel:"Intercompany Trade Debtors Group Companies", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:26020, accountName:"Other Salary/Wages Accruals", section:"Current liabilities", groupCode:26020, groupLabel:"Other Salary/Wages Accruals", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:27050, accountName:"Bonuses - Other", section:"Current liabilities", groupCode:27050, groupLabel:"Bonuses - Other", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:12540, accountName:"Depreciation  - Administration Related", section:"Administration", groupCode:12540, groupLabel:"Depreciation  - Administration Related", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:12760, accountName:"Other Administrative Expenses", section:"Administration", groupCode:12760, groupLabel:"Other Administrative Expenses", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:13790, accountName:"Other", section:"Interest expense", groupCode:13790, groupLabel:"Other", ifrsLine:"Finansman giderleri", noteRef:null },
+  { accountCode:13600, accountName:"Bank Overdraft and Borrowings", section:"Interest expense", groupCode:13600, groupLabel:"Bank Overdraft and Borrowings", ifrsLine:"Finansman giderleri", noteRef:null },
+  { accountCode:25980, accountName:"Leave - At Full Cost to Company - Salaries", section:"Current liabilities", groupCode:25980, groupLabel:"Leave - At Full Cost to Company - Salaries", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:20350, accountName:"Lisanslar - Maliyet", section:"Non-current assets", groupCode:20350, groupLabel:"Lisanslar - Maliyet", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:27380, accountName:"Diğer kısa vadeli borçlar", section:"Current liabilities", groupCode:27380, groupLabel:"Diğer kısa vadeli borçlar", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:12160, accountName:"Defined Benefit Plans / Post Employment Benefits", section:"Administration", groupCode:12160, groupLabel:"Defined Benefit Plans / Post Employment Benefits", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:20020, accountName:"Buildings - Cost", section:"Non-current assets", groupCode:20020, groupLabel:"Buildings - Cost", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:"Account Code", accountName:"Hesap Account Code", section:"Current assets", groupCode:"Account Code", groupLabel:"Hesap Account Code", ifrsLine:"Diğer", noteRef:null },
+  { accountCode:20010, accountName:"Land  - Accumulated Impairment", section:"Non-current assets", groupCode:20010, groupLabel:"Land  - Accumulated Impairment", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:10920, accountName:"Employee Costs Salaries - Social Security (Other)", section:"Cogs", groupCode:10920, groupLabel:"Employee Costs Salaries - Social Security (Other)", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:26900, accountName:"Intercompany Trade Payables Group Companies", section:"Current liabilities", groupCode:26900, groupLabel:"Intercompany Trade Payables Group Companies", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:20080, accountName:"Motor Vehicles - Cost", section:"Non-current assets", groupCode:20080, groupLabel:"Motor Vehicles - Cost", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:20090, accountName:"Motor Vehicles - Accumulated Depreciation", section:"Non-current assets", groupCode:20090, groupLabel:"Motor Vehicles - Accumulated Depreciation", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:11000, accountName:"Depreciation Allocated - Cost of Sales Related", section:"Cogs", groupCode:11000, groupLabel:"Depreciation Allocated - Cost of Sales Related", ifrsLine:"Satışların maliyeti", noteRef:null },
+  { accountCode:12040, accountName:"Depreciation - Distribution / Transport Related", section:"Distribution", groupCode:12040, groupLabel:"Depreciation - Distribution / Transport Related", ifrsLine:"Pazarlama, satış ve dağıtım giderleri", noteRef:null },
+  { accountCode:27340, accountName:"Finansal kiralama yükümlülükleri - Kısa vadeli", section:"Current liabilities", groupCode:27340, groupLabel:"Finansal kiralama yükümlülükleri - Kısa vadeli", ifrsLine:"Diğer kısa vadeli yükümlülükler", noteRef:null },
+  { accountCode:20200, accountName:"Kullanım hakkı varlığı - Birikmiş amortisman", section:"Non-current assets", groupCode:20200, groupLabel:"Kullanım hakkı varlığı - Birikmiş amortisman", ifrsLine:"Maddi duran varlıklar", noteRef:null },
+  { accountCode:12280, accountName:"Transport and Travel Expenses", section:"Administration", groupCode:12280, groupLabel:"Transport and Travel Expenses", ifrsLine:"Genel yönetim giderleri", noteRef:null },
+  { accountCode:21540, accountName:"Goods in Transit", section:"Current assets", groupCode:21540, groupLabel:"Goods in Transit", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:25100, accountName:"Deferred Taxation Liabilities", section:"Non-current liability", groupCode:25100, groupLabel:"Deferred Taxation Liabilities", ifrsLine:"Uzun vadeli yükümlülükler", noteRef:null },
+  { accountCode:15200, accountName:"Taxation Effect", section:"Comprehensive income", groupCode:15200, groupLabel:"Taxation Effect", ifrsLine:"Diğer kapsamlı gelir", noteRef:null },
+  { accountCode:22800, accountName:"Forward Exchange Currency Contracts Held for Trade", section:"Current assets", groupCode:22800, groupLabel:"Forward Exchange Currency Contracts Held for Trade", ifrsLine:"Diğer dönen varlıklar", noteRef:null },
+  { accountCode:21510, accountName:"Consumable Stores", section:"Current assets", groupCode:21510, groupLabel:"Consumable Stores", ifrsLine:"Diğer dönen varlıklar", noteRef:null }
+];
+
+const DEMO_TB_CY = [
+  { accountCode:20050, debit:1077.5, credit:0 },
+  { accountCode:20140, debit:896.2, credit:0 },
+  { accountCode:20060, debit:0, credit:739.2 },
+  { accountCode:20110, debit:347.0, credit:0 },
+  { accountCode:20120, debit:0, credit:333.7 },
+  { accountCode:20470, debit:300.0, credit:0 },
+  { accountCode:20360, debit:0, credit:252.1 },
+  { accountCode:20000, debit:81.5, credit:0 },
+  { accountCode:21800, debit:3503.3, credit:0 },
+  { accountCode:21520, debit:811.8, credit:0 },
+  { accountCode:21500, debit:571.4, credit:0 },
+  { accountCode:22510, debit:442.8, credit:0 },
+  { accountCode:21560, debit:286.3, credit:0 },
+  { accountCode:22000, debit:276.3, credit:0 },
+  { accountCode:21530, debit:237.3, credit:0 },
+  { accountCode:21900, debit:145.1, credit:0 },
+  { accountCode:24810, debit:2271.7, credit:0 },
+  { accountCode:25700, debit:3264.0, credit:0 },
+  { accountCode:27310, debit:686.5, credit:0 },
+  { accountCode:26300, debit:350.3, credit:0 },
+  { accountCode:27320, debit:321.5, credit:0 },
+  { accountCode:26370, debit:115.6, credit:0 },
+  { accountCode:26000, debit:40.0, credit:0 },
+  { accountCode:26140, debit:12.9, credit:0 },
+  { accountCode:26160, debit:8.2, credit:0 },
+  { accountCode:23230, debit:2855.2, credit:0 },
+  { accountCode:24200, debit:0, credit:350.1 },
+  { accountCode:24290, debit:3.5, credit:0 },
+  { accountCode:24210, debit:0, credit:831.2 },
+  { accountCode:23200, debit:74.0, credit:0 },
+  { accountCode:10000, debit:8748.9, credit:0 },
+  { accountCode:10050, debit:2461.5, credit:0 },
+  { accountCode:10200, debit:0, credit:1096.3 },
+  { accountCode:10430, debit:0, credit:3835.4 },
+  { accountCode:10420, debit:0, credit:1550.6 },
+  { accountCode:10900, debit:0, credit:1277.9 },
+  { accountCode:11250, debit:0, credit:871.7 },
+  { accountCode:11600, debit:38.2, credit:0 },
+  { accountCode:11830, debit:0, credit:192.2 },
+  { accountCode:11900, debit:0, credit:135.7 },
+  { accountCode:12050, debit:0, credit:36.5 },
+  { accountCode:12100, debit:0, credit:192.6 },
+  { accountCode:12500, debit:0, credit:84.7 },
+  { accountCode:12530, debit:0, credit:57.2 },
+  { accountCode:13190, debit:0, credit:3.9 },
+  { accountCode:13500, debit:99.4, credit:0 },
+  { accountCode:13720, debit:0, credit:923.2 },
+  { accountCode:29900, debit:81.5, credit:0 },
+  { accountCode:29910, debit:1318.4, credit:0 },
+  { accountCode:29930, debit:229.8, credit:0 },
+  { accountCode:29950, debit:0, credit:23.2 },
+  { accountCode:29960, debit:0, credit:837.7 },
+  { accountCode:29961, debit:1.2, credit:0 },
+  { accountCode:29962, debit:96.0, credit:0 },
+  { accountCode:29963, debit:0, credit:178.2 },
+  { accountCode:29964, debit:0, credit:195.8 },
+  { accountCode:29968, debit:67.5, credit:0 },
+  { accountCode:29969, debit:0, credit:851.2 },
+  { accountCode:24210, debit:0, credit:17272.4 }
+];
+
+const DEMO_TB_PY = [
+  { accountCode:20050, debit:893.8, credit:0 },
+  { accountCode:20140, debit:666.3, credit:0 },
+  { accountCode:20060, debit:0, credit:575.5 },
+  { accountCode:20110, debit:267.6, credit:0 },
+  { accountCode:20120, debit:0, credit:281.3 },
+  { accountCode:20470, debit:250.5, credit:0 },
+  { accountCode:20360, debit:0, credit:218.0 },
+  { accountCode:20000, debit:61.3, credit:0 },
+  { accountCode:21800, debit:2799.4, credit:0 },
+  { accountCode:21520, debit:604.1, credit:0 },
+  { accountCode:21500, debit:440.3, credit:0 },
+  { accountCode:22510, debit:359.0, credit:0 },
+  { accountCode:21560, debit:213.0, credit:0 },
+  { accountCode:22000, debit:212.2, credit:0 },
+  { accountCode:21530, debit:197.2, credit:0 },
+  { accountCode:21900, debit:118.4, credit:0 },
+  { accountCode:24810, debit:1751.2, credit:0 },
+  { accountCode:25700, debit:2684.7, credit:0 },
+  { accountCode:27310, debit:585.8, credit:0 },
+  { accountCode:26300, debit:259.6, credit:0 },
+  { accountCode:27320, debit:274.2, credit:0 },
+  { accountCode:26370, debit:96.9, credit:0 },
+  { accountCode:26000, debit:31.5, credit:0 },
+  { accountCode:26140, debit:9.8, credit:0 },
+  { accountCode:26160, debit:7.2, credit:0 },
+  { accountCode:23230, debit:2247.4, credit:0 },
+  { accountCode:24200, debit:0, credit:263.7 },
+  { accountCode:24290, debit:2.6, credit:0 },
+  { accountCode:24210, debit:0, credit:713.7 },
+  { accountCode:23200, debit:61.0, credit:0 },
+  { accountCode:10000, debit:7462.8, credit:0 },
+  { accountCode:10050, debit:2073.0, credit:0 },
+  { accountCode:10200, debit:0, credit:893.6 },
+  { accountCode:10430, debit:0, credit:3360.7 },
+  { accountCode:10420, debit:0, credit:1229.6 },
+  { accountCode:10900, debit:0, credit:1044.4 },
+  { accountCode:11250, debit:0, credit:746.3 },
+  { accountCode:11600, debit:31.6, credit:0 },
+  { accountCode:11830, debit:0, credit:165.4 },
+  { accountCode:11900, debit:0, credit:111.4 },
+  { accountCode:12050, debit:0, credit:30.6 },
+  { accountCode:12100, debit:0, credit:143.8 },
+  { accountCode:12500, debit:0, credit:65.4 },
+  { accountCode:12530, debit:0, credit:44.7 },
+  { accountCode:13190, debit:0, credit:2.9 },
+  { accountCode:13500, debit:76.8, credit:0 },
+  { accountCode:13720, debit:0, credit:696.2 },
+  { accountCode:29900, debit:63.5, credit:0 },
+  { accountCode:29910, debit:1093.0, credit:0 },
+  { accountCode:29930, debit:181.8, credit:0 },
+  { accountCode:29950, debit:0, credit:18.4 },
+  { accountCode:29960, debit:0, credit:644.5 },
+  { accountCode:29961, debit:1.0, credit:0 },
+  { accountCode:29962, debit:83.7, credit:0 },
+  { accountCode:29963, debit:0, credit:148.0 },
+  { accountCode:29964, debit:0, credit:161.6 },
+  { accountCode:29968, debit:51.6, credit:0 },
+  { accountCode:29969, debit:0, credit:716.8 },
+  { accountCode:24210, debit:0, credit:13937.3 }
+];
+
+let state = {
+  accountMap: new AccountMap(DEMO_ACCOUNT_ROWS),
+  carry: new JournalSheet('Carry', ['bs_re']),
+  aje: new JournalSheet('AJE', ['bs_is']),
+  rje: new JournalSheet('RJE', ['bs_bs','is_is']),
+  faAssets: [
+    { name:'Tesis, makine ve cihazlar', accountCodeCost:20050, accountCodeAccDep:20060, cost:107754.9, activationDate:'2019-09-07', usefulLifeYears:10, statutoryAnnualDep:10650.0 },
+    { name:'Demirbaşlar', accountCodeCost:20110, accountCodeAccDep:20120, cost:346999.98, activationDate:'2021-02-12', usefulLifeYears:5, statutoryAnnualDep:64323.0 }
+  ],
+  etb: {
+    discountRate:14.5, salaryIncrease:35.0, turnoverRate:8.0, employeeCount:1840,
+    dbo:41430.3, currentServiceCost:8568.5, interestCost:8568.5, oci:-34274.2,
+    accountCode:25520
+  },
+  taxRate:0.25,
+  periodEnd:'2025-12-31',
+  theme:'light',
+  lang:'tr',
+  activeScreen:'mizan',
+  authScreen:'login',
+  authError:''
+};
+
+let currentUser = null; // {name, email, company}
+
+function loadSession() {
+  try {
+    const raw = window.localStorage ? localStorage.getItem('wtb_demo_user') : null;
+    if (raw) currentUser = JSON.parse(raw);
+  } catch (e) { currentUser = null; }
+  try {
+    const savedLang = localStorage.getItem('wtb_lang');
+    if (savedLang === 'tr' || savedLang === 'en') state.lang = savedLang;
+    const savedTheme = localStorage.getItem('wtb_theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') state.theme = savedTheme;
+  } catch (e) {}
+}
+function saveSession(user) {
+  currentUser = user;
+  try { localStorage.setItem('wtb_demo_user', JSON.stringify(user)); } catch (e) {}
+}
+function clearSession() {
+  currentUser = null;
+  try { localStorage.removeItem('wtb_demo_user'); } catch (e) {}
+}
+
+// Carry: gerçek açılış düzeltme kayıtları (Mutlu Akü WTB'sinden, TL bin ölçekli)
+state.carry.addEntry({ adjNo:10, groupLabel:"Employee Termination Benefits", accountCode:25410, debit:2104.66, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:10, groupLabel:"Employee Termination Benefits", accountCode:24200, debit:0.0, credit:2104.66, source:'manual' });
+state.carry.addEntry({ adjNo:10, groupLabel:"Deferred tax CY", accountCode:21100, debit:0.0, credit:33371.62, source:'manual' });
+state.carry.addEntry({ adjNo:10, groupLabel:"Deferred tax CY", accountCode:24200, debit:33371.62, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:6, groupLabel:"Financial expense on fixed assets derecognition", accountCode:20110, debit:551.97, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:6, groupLabel:"Financial expense on fixed assets derecognition", accountCode:24200, debit:0.0, credit:551.97, source:'manual' });
+state.carry.addEntry({ adjNo:6, groupLabel:"Stock Revaluation", accountCode:24200, debit:29258.22, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:6, groupLabel:"Stock Revaluation", accountCode:21500, debit:0.0, credit:29258.22, source:'manual' });
+state.carry.addEntry({ adjNo:2, groupLabel:"Fixed assets IFRS correction", accountCode:20110, debit:1648.93, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:2, groupLabel:"Fixed assets IFRS correction", accountCode:20350, debit:0.0, credit:1.46, source:'manual' });
+state.carry.addEntry({ adjNo:2, groupLabel:"Fixed assets IFRS correction", accountCode:24200, debit:0.0, credit:1647.47, source:'manual' });
+state.carry.addEntry({ adjNo:2, groupLabel:"Guarantee provision", accountCode:25500, debit:0.0, credit:8352.44, source:'manual' });
+state.carry.addEntry({ adjNo:2, groupLabel:"Guarantee provision", accountCode:24200, debit:8352.44, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:2, groupLabel:"Guarantee provision", accountCode:25500, debit:0.0, credit:13484.07, source:'manual' });
+state.carry.addEntry({ adjNo:2, groupLabel:"Guarantee provision", accountCode:24200, debit:13484.07, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:4, groupLabel:"Employee Termination Benefits", accountCode:25410, debit:11286.39, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:4, groupLabel:"Employee Termination Benefits", accountCode:24200, debit:0.0, credit:11286.39, source:'manual' });
+state.carry.addEntry({ adjNo:4, groupLabel:"Lawsuit provisions (Labour case)", accountCode:27070, debit:0.0, credit:2998.85, source:'manual' });
+state.carry.addEntry({ adjNo:4, groupLabel:"Lawsuit provisions (Labour case)", accountCode:24200, debit:2998.85, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:42, groupLabel:"Edirne Land impairment", accountCode:24200, debit:10459.0, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:42, groupLabel:"Edirne Land impairment", accountCode:20010, debit:0.0, credit:10459.0, source:'manual' });
+state.carry.addEntry({ adjNo:42, groupLabel:"2017 late aje reversal", accountCode:26160, debit:141.0, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:42, groupLabel:"2017 late aje reversal", accountCode:24200, debit:0.0, credit:141.0, source:'manual' });
+state.carry.addEntry({ adjNo:24, groupLabel:"Factoring Cost 2023", accountCode:24200, debit:0.0, credit:-10457.07, source:'manual' });
+state.carry.addEntry({ adjNo:24, groupLabel:"Factoring Cost 2023", accountCode:21900, debit:-10457.07, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:9, groupLabel:"Deferred tax", accountCode:21100, debit:8119.11, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:9, groupLabel:"Deferred tax", accountCode:24200, debit:880.78, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:9, groupLabel:"Deferred tax", accountCode:24200, debit:0.0, credit:8999.9, source:'manual' });
+state.carry.addEntry({ adjNo:9, groupLabel:"Reversal of Personnel Bonus", accountCode:27050, debit:650.0, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:9, groupLabel:"Reversal of Personnel Bonus", accountCode:24200, debit:0.0, credit:115.56, source:'manual' });
+state.carry.addEntry({ adjNo:9, groupLabel:"Reversal of Personnel Bonus", accountCode:24200, debit:0.0, credit:534.44, source:'manual' });
+state.carry.addEntry({ adjNo:1, groupLabel:"Financial expense on fixed assets derecognition", accountCode:24200, debit:3056.58, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:1, groupLabel:"Financial expense on fixed assets derecognition", accountCode:20110, debit:0.0, credit:3056.58, source:'manual' });
+state.carry.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2022 Expense", accountCode:21510, debit:1067.56, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2022 Expense", accountCode:24200, debit:0.0, credit:1067.56, source:'manual' });
+state.carry.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2023 Expense", accountCode:21510, debit:3064.84, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2023 Expense", accountCode:24200, debit:0.0, credit:3064.84, source:'manual' });
+state.carry.addEntry({ adjNo:5, groupLabel:"Enviromental liability deferred tax effect", accountCode:24200, debit:0.0, credit:534.78, source:'manual' });
+state.carry.addEntry({ adjNo:5, groupLabel:"Enviromental liability deferred tax effect", accountCode:25100, debit:534.78, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:5, groupLabel:"Promotion Stock", accountCode:21510, debit:0.0, credit:3064.84, source:'manual' });
+state.carry.addEntry({ adjNo:5, groupLabel:"Promotion Stock", accountCode:24200, debit:3064.84, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:5, groupLabel:"Promotion Stock", accountCode:21560, debit:0.0, credit:2426.82, source:'manual' });
+state.carry.addEntry({ adjNo:5, groupLabel:"Promotion Stock", accountCode:24200, debit:2426.82, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:48, groupLabel:"Fixed assets IFRS adjustment", accountCode:20110, debit:0.0, credit:1827.83, source:'manual' });
+state.carry.addEntry({ adjNo:48, groupLabel:"Fixed assets IFRS adjustment", accountCode:24200, debit:-649.75, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:48, groupLabel:"Fixed assets IFRS adjustment", accountCode:24200, debit:1394.25, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:48, groupLabel:"Fixed assets IFRS adjustment", accountCode:20350, debit:2477.58, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:48, groupLabel:"Fixed assets IFRS adjustment", accountCode:20470, debit:0.0, credit:1394.25, source:'manual' });
+state.carry.addEntry({ adjNo:22, groupLabel:"Bonus provision for Sales-Exco ", accountCode:27050, debit:0.0, credit:965.27, source:'manual' });
+state.carry.addEntry({ adjNo:22, groupLabel:"Bonus provision for Sales-Exco ", accountCode:24200, debit:171.6, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:22, groupLabel:"Bonus provision for Sales-Exco ", accountCode:24200, debit:793.67, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:22, groupLabel:"Bonus provision for Sales-Exco ", accountCode:27050, debit:0.0, credit:2500.0, source:'manual' });
+state.carry.addEntry({ adjNo:22, groupLabel:"Bonus provision for Sales-Exco ", accountCode:24200, debit:444.44, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:22, groupLabel:"Bonus provision for Sales-Exco ", accountCode:24200, debit:2055.56, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:37, groupLabel:"Deferred tax", accountCode:25100, debit:3387.24, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:37, groupLabel:"Deferred tax", accountCode:24200, debit:0.0, credit:3387.24, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"Tübitak incentive", accountCode:24200, debit:158.96, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"Tübitak incentive", accountCode:20350, debit:0.0, credit:158.96, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:24200, debit:1381.4, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:24200, debit:0.0, credit:760.98, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:20470, debit:0.0, credit:620.42, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:24200, debit:1429.79, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:24200, debit:0.0, credit:561.86, source:'manual' });
+state.carry.addEntry({ adjNo:14, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:20470, debit:0.0, credit:867.93, source:'manual' });
+state.carry.addEntry({ adjNo:15, groupLabel:"Lawsuit provision", accountCode:24200, debit:101.38, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:15, groupLabel:"Lawsuit provision", accountCode:27070, debit:0.0, credit:101.38, source:'manual' });
+state.carry.addEntry({ adjNo:15, groupLabel:"Reversal of Bonus premium-2017", accountCode:27050, debit:2250.0, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:15, groupLabel:"Reversal of Bonus premium-2017", accountCode:24200, debit:0.0, credit:1125.0, source:'manual' });
+state.carry.addEntry({ adjNo:15, groupLabel:"Reversal of Bonus premium-2017", accountCode:24200, debit:0.0, credit:1125.0, source:'manual' });
+state.carry.addEntry({ adjNo:15, groupLabel:"Tofaş - Ford Fiyat Farkı", accountCode:24200, debit:0.0, credit:62.24, source:'manual' });
+state.carry.addEntry({ adjNo:15, groupLabel:"Tofaş - Ford Fiyat Farkı", accountCode:21800, debit:62.24, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:56, groupLabel:"İptal R&D projelerin reverse edilmesi", accountCode:20470, debit:90.23, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:56, groupLabel:"İptal R&D projelerin reverse edilmesi", accountCode:24200, debit:0.0, credit:90.23, source:'manual' });
+state.carry.addEntry({ adjNo:56, groupLabel:"Bonus provision for sales employees", accountCode:27050, debit:0.0, credit:2250.0, source:'manual' });
+state.carry.addEntry({ adjNo:56, groupLabel:"Bonus provision for sales employees", accountCode:24200, debit:400.0, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:56, groupLabel:"Bonus provision for sales employees", accountCode:24200, debit:1850.0, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:50, groupLabel:"Deferred tax CY", accountCode:25100, debit:793.3, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:50, groupLabel:"Deferred tax CY", accountCode:21100, debit:0.0, credit:-1023.87, source:'manual' });
+state.carry.addEntry({ adjNo:50, groupLabel:"Deferred tax CY", accountCode:24200, debit:-1817.17, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:50, groupLabel:"IFRS 16 Interest Expense", accountCode:24200, debit:38.75, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:50, groupLabel:"IFRS 16 Interest Expense", accountCode:27340, debit:0.0, credit:38.75, source:'manual' });
+state.carry.addEntry({ adjNo:50, groupLabel:"IFRS 16 Interest Expense", accountCode:24200, debit:153.06, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:50, groupLabel:"IFRS 16 Interest Expense", accountCode:27340, debit:0.0, credit:153.06, source:'manual' });
+state.carry.addEntry({ adjNo:45, groupLabel:"Lawsuit provisions (Labour case)", accountCode:27070, debit:0.0, credit:619.87, source:'manual' });
+state.carry.addEntry({ adjNo:45, groupLabel:"Lawsuit provisions (Labour case)", accountCode:24200, debit:619.87, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:45, groupLabel:"Lawsuit provisions (Labour case)", accountCode:27050, debit:500.0, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:45, groupLabel:"Lawsuit provisions (Labour case)", accountCode:24200, debit:0.0, credit:500.0, source:'manual' });
+state.carry.addEntry({ adjNo:45, groupLabel:"Ek  Garanti Karşılığı Reverse", accountCode:26160, debit:811.5, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:45, groupLabel:"Ek  Garanti Karşılığı Reverse", accountCode:24200, debit:0.0, credit:811.5, source:'manual' });
+state.carry.addEntry({ adjNo:43, groupLabel:"Guarantee provision", accountCode:25500, debit:0.0, credit:-32.4, source:'manual' });
+state.carry.addEntry({ adjNo:43, groupLabel:"Guarantee provision", accountCode:24200, debit:-32.4, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:43, groupLabel:"Guarantee provision", accountCode:27620, debit:0.0, credit:650.05, source:'manual' });
+state.carry.addEntry({ adjNo:43, groupLabel:"Guarantee provision", accountCode:24200, debit:650.05, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:43, groupLabel:"Sabit Kıymet Faiz Giderlerinin Silinmesi", accountCode:20050, debit:0.0, credit:1148.97, source:'manual' });
+state.carry.addEntry({ adjNo:43, groupLabel:"Sabit Kıymet Faiz Giderlerinin Silinmesi", accountCode:24200, debit:1148.97, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Late aje 2016", accountCode:27620, debit:0.0, credit:-650.05, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Late aje 2016", accountCode:24200, debit:-650.05, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Mizan Farkları Net", accountCode:26160, debit:0.0, credit:5.1, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Mizan Farkları Net", accountCode:24200, debit:5.1, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Mizan Farkları Net", accountCode:21510, debit:509.14, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Mizan Farkları Net", accountCode:24200, debit:0.0, credit:509.14, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Yanan makinelerin IFRS -VUK amortisman farkı", accountCode:24200, debit:493.99, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:41, groupLabel:"Yanan makinelerin IFRS -VUK amortisman farkı", accountCode:20060, debit:0.0, credit:493.99, source:'manual' });
+state.carry.addEntry({ adjNo:31, groupLabel:"Lawsuit provision reversal", accountCode:27070, debit:49.62, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:31, groupLabel:"Lawsuit provision reversal", accountCode:24200, debit:0.0, credit:49.62, source:'manual' });
+state.carry.addEntry({ adjNo:31, groupLabel:"Late aje 2015", accountCode:25410, debit:0.0, credit:799.44, source:'manual' });
+state.carry.addEntry({ adjNo:31, groupLabel:"Late aje 2015", accountCode:24200, debit:799.44, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:31, groupLabel:"IFRS 16 Financial Leases Değerleme", accountCode:24200, debit:405.08, credit:0.0, source:'manual' });
+state.carry.addEntry({ adjNo:31, groupLabel:"IFRS 16 Financial Leases Değerleme", accountCode:27340, debit:0.0, credit:405.08, source:'manual' });
+
+// AJE: gerçek düzeltme kayıtları (Mutlu Akü WTB'sinden, TL bin ölçekli)
+state.aje.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2024 Expense", accountCode:21510, debit:2426.82, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:1, groupLabel:"Reversal of Promotion Materials 2024 Expense", accountCode:10430, debit:0.0, credit:2426.82, source:'manual' });
+state.aje.addEntry({ adjNo:2, groupLabel:"Guarantee provision", accountCode:25500, debit:0.0, credit:18925.19, source:'manual' });
+state.aje.addEntry({ adjNo:2, groupLabel:"Guarantee provision", accountCode:11180, debit:18925.19, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:3, groupLabel:"Reversal of Bonus provision for Sales", accountCode:27050, debit:2500.0, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:3, groupLabel:"Reversal of Bonus provision for Sales", accountCode:10900, debit:0.0, credit:2500.0, source:'manual' });
+state.aje.addEntry({ adjNo:4, groupLabel:"Lawsuit provisions (Labour case)", accountCode:27070, debit:0.0, credit:19078.53, source:'manual' });
+state.aje.addEntry({ adjNo:4, groupLabel:"Lawsuit provisions (Labour case)", accountCode:12520, debit:19078.53, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:5, groupLabel:"Promotion Stock", accountCode:21510, debit:0.0, credit:1821.36, source:'manual' });
+state.aje.addEntry({ adjNo:5, groupLabel:"Promotion Stock", accountCode:10430, debit:1821.36, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:6, groupLabel:"Seniority incentive", accountCode:25410, debit:0.0, credit:29691.5, source:'manual' });
+state.aje.addEntry({ adjNo:6, groupLabel:"Seniority incentive", accountCode:15100, debit:21357.94, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:6, groupLabel:"Seniority incentive", accountCode:15200, debit:0.0, credit:5339.48, source:'manual' });
+state.aje.addEntry({ adjNo:6, groupLabel:"Seniority incentive", accountCode:14400, debit:5339.48, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:6, groupLabel:"Seniority incentive", accountCode:13790, debit:14511.92, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:6, groupLabel:"Seniority incentive", accountCode:12160, debit:-6178.36, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:7, groupLabel:"Fixed assets IFRS adjustment", accountCode:20110, debit:63571.11, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:7, groupLabel:"Fixed assets IFRS adjustment", accountCode:11000, debit:0.0, credit:87403.12, source:'manual' });
+state.aje.addEntry({ adjNo:7, groupLabel:"Fixed assets IFRS adjustment", accountCode:12040, debit:0.0, credit:4482.12, source:'manual' });
+state.aje.addEntry({ adjNo:7, groupLabel:"Fixed assets IFRS adjustment", accountCode:12540, debit:0.0, credit:2845.1, source:'manual' });
+state.aje.addEntry({ adjNo:7, groupLabel:"Fixed assets IFRS adjustment", accountCode:12550, debit:9593.03, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:7, groupLabel:"Fixed assets IFRS adjustment", accountCode:20350, debit:31159.22, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:7, groupLabel:"Fixed assets IFRS adjustment", accountCode:20470, debit:0.0, credit:9593.03, source:'manual' });
+state.aje.addEntry({ adjNo:8, groupLabel:"Deferred tax CY", accountCode:25100, debit:241902.67, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:8, groupLabel:"Deferred tax CY", accountCode:14400, debit:0.0, credit:241902.67, source:'manual' });
+state.aje.addEntry({ adjNo:10, groupLabel:"NRV ", accountCode:21530, debit:0.0, credit:-1146.05, source:'manual' });
+state.aje.addEntry({ adjNo:10, groupLabel:"NRV ", accountCode:10430, debit:-1146.05, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:11, groupLabel:"R&D expenses", accountCode:20470, debit:0.0, credit:5153.89, source:'manual' });
+state.aje.addEntry({ adjNo:11, groupLabel:"R&D expenses", accountCode:12530, debit:5153.89, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:11, groupLabel:"R&D expenses", accountCode:13190, debit:0.0, credit:3853.1, source:'manual' });
+state.aje.addEntry({ adjNo:11, groupLabel:"R&D expenses", accountCode:20470, debit:3853.1, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:12, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:12550, debit:1161.16, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:12, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:12530, debit:0.0, credit:192.71, source:'manual' });
+state.aje.addEntry({ adjNo:12, groupLabel:"MDV Değerlemesinden aktifleşen amortismanların geri çekilmesi", accountCode:20470, debit:0.0, credit:968.45, source:'manual' });
+state.aje.addEntry({ adjNo:17, groupLabel:"Unused vacation provision", accountCode:25980, debit:0.0, credit:21642.65, source:'manual' });
+state.aje.addEntry({ adjNo:17, groupLabel:"Unused vacation provision", accountCode:10900, debit:5616.25, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:17, groupLabel:"Unused vacation provision", accountCode:11900, debit:7530.28, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:17, groupLabel:"Unused vacation provision", accountCode:12100, debit:8496.12, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:20, groupLabel:"Bonus provision for Sales-Exco ", accountCode:27050, debit:0.0, credit:18000.0, source:'manual' });
+state.aje.addEntry({ adjNo:20, groupLabel:"Bonus provision for Sales-Exco ", accountCode:10900, debit:900.0, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:20, groupLabel:"Bonus provision for Sales-Exco ", accountCode:11900, debit:900.0, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:20, groupLabel:"Bonus provision for Sales-Exco ", accountCode:12100, debit:16200.0, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:26, groupLabel:"2024 girilmeyen faturalar reverse", accountCode:12760, debit:0.0, credit:376.1, source:'manual' });
+state.aje.addEntry({ adjNo:26, groupLabel:"2024 girilmeyen faturalar reverse", accountCode:25700, debit:379.15, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:26, groupLabel:"2024 girilmeyen faturalar reverse", accountCode:26160, debit:-3.06, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:27, groupLabel:"Tofaş - Ford Fiyat Farkı reverse", accountCode:10000, debit:62.24, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:27, groupLabel:"Tofaş - Ford Fiyat Farkı reverse", accountCode:21800, debit:0.0, credit:62.24, source:'manual' });
+state.aje.addEntry({ adjNo:28, groupLabel:"Late Aje", accountCode:24200, debit:1.56, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:28, groupLabel:"Late Aje", accountCode:10430, debit:0.0, credit:1.56, source:'manual' });
+state.aje.addEntry({ adjNo:30, groupLabel:"IRR Reverse", accountCode:27320, debit:78651.3, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:30, groupLabel:"IRR Reverse", accountCode:24810, debit:0.0, credit:75655.18, source:'manual' });
+state.aje.addEntry({ adjNo:30, groupLabel:"IRR Reverse", accountCode:13720, debit:0.0, credit:2996.12, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:20190, debit:39555.36, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:20200, debit:0.0, credit:31059.99, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:27340, debit:0.0, credit:8495.37, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:12050, debit:0.0, credit:2235.96, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:12280, debit:0.0, credit:3354.51, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:11250, debit:0.0, credit:804.0, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:27340, debit:6394.48, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:12040, debit:1720.75, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:12540, debit:1972.47, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:11000, debit:842.66, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:13610, debit:1858.55, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:20200, debit:0.0, credit:4535.87, source:'manual' });
+state.aje.addEntry({ adjNo:31, groupLabel:"Araç Kira Devir from Holding", accountCode:27340, debit:0.0, credit:1858.55, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20020, debit:0.0, credit:3466.14, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20020, debit:0.0, credit:1595.63, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20050, debit:0.0, credit:150920.81, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20080, debit:0.0, credit:2322.07, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20110, debit:0.0, credit:64207.68, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20120, debit:93753.84, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20350, debit:0.0, credit:12855.5, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20360, debit:0.0, credit:-20323.27, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:20470, debit:-29360.46, credit:0.0, source:'manual' });
+state.aje.addEntry({ adjNo:32, groupLabel:"2025 Yeniden Değerleme Geri Çekilmesi", accountCode:24200, debit:0.0, credit:-150651.17, source:'manual' });
+state.aje.addEntry({ adjNo:33, groupLabel:"Credit Note Accrual", accountCode:10430, debit:0.0, credit:3316.33, source:'manual' });
+state.aje.addEntry({ adjNo:33, groupLabel:"Credit Note Accrual", accountCode:25700, debit:3316.33, credit:0.0, source:'manual' });
+
+// RJE: gerçek sınıflandırma kayıtları (Mutlu Akü WTB'sinden, TL bin ölçekli)
+state.rje.addEntry({ adjNo:1, groupLabel:"Unrecorded liability", accountCode:21540, debit:32280.83, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:1, groupLabel:"Unrecorded liability", accountCode:21900, debit:0.0, credit:32280.83, source:'manual' });
+state.rje.addEntry({ adjNo:2, groupLabel:"Unrecorded liability (Makineler)", accountCode:20140, debit:25487.2, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:2, groupLabel:"Unrecorded liability (Makineler)", accountCode:21900, debit:0.0, credit:25487.2, source:'manual' });
+state.rje.addEntry({ adjNo:3, groupLabel:"POS receivables more than 3 months maturity", accountCode:21800, debit:63383.48, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:3, groupLabel:"POS receivables more than 3 months maturity", accountCode:22510, debit:0.0, credit:63383.48, source:'manual' });
+state.rje.addEntry({ adjNo:4, groupLabel:"Short term portion of guarantee provision", accountCode:25500, debit:16529.86, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:4, groupLabel:"Short term portion of guarantee provision", accountCode:27000, debit:0.0, credit:16529.86, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20350, debit:-216518.99, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20360, debit:216518.99, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20000, debit:0.0, credit:901.51, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20020, debit:437.83, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20050, debit:0.0, credit:2579.41, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20080, debit:0.0, credit:27.88, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20110, debit:0.0, credit:197919.22, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20030, debit:21712.81, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20060, debit:395958.84, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20090, debit:-374614.92, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20120, debit:157933.45, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20210, debit:0.83, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:5, groupLabel:"Fixed Assets Reclassification", accountCode:20220, debit:0.0, credit:0.83, source:'manual' });
+state.rje.addEntry({ adjNo:6, groupLabel:"Related party reclass", accountCode:21800, debit:0.0, credit:1276653.53, source:'manual' });
+state.rje.addEntry({ adjNo:6, groupLabel:"Related party reclass", accountCode:22400, debit:1276653.53, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:6, groupLabel:"Related party reclass", accountCode:26900, debit:0.0, credit:1560464.75, source:'manual' });
+state.rje.addEntry({ adjNo:6, groupLabel:"Related party reclass", accountCode:25700, debit:1560464.75, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:7, groupLabel:"VAT closing", accountCode:22000, debit:0.0, credit:276336.09, source:'manual' });
+state.rje.addEntry({ adjNo:7, groupLabel:"VAT closing", accountCode:26300, debit:276336.09, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:9, groupLabel:"Reverse accounts on receivables", accountCode:21800, debit:8512.94, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:9, groupLabel:"Reverse accounts on receivables", accountCode:26370, debit:0.0, credit:8512.94, source:'manual' });
+state.rje.addEntry({ adjNo:10, groupLabel:"Reverse accounts on payables", accountCode:25700, debit:0.0, credit:8760.19, source:'manual' });
+state.rje.addEntry({ adjNo:10, groupLabel:"Reverse accounts on payables", accountCode:21900, debit:8760.19, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:11, groupLabel:"R&D Amortisman Sınıflaması", accountCode:20470, debit:43629.18, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:11, groupLabel:"R&D Amortisman Sınıflaması", accountCode:20480, debit:0.0, credit:43629.18, source:'manual' });
+state.rje.addEntry({ adjNo:13, groupLabel:"Reverse advance accounts", accountCode:21900, debit:149.63, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:13, groupLabel:"Reverse advance accounts", accountCode:26000, debit:0.0, credit:149.63, source:'manual' });
+state.rje.addEntry({ adjNo:14, groupLabel:"Amortisman sınıf Düzeltmesi", accountCode:11000, debit:1038.53, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:14, groupLabel:"Amortisman sınıf Düzeltmesi", accountCode:11000, debit:31385.57, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:14, groupLabel:"Amortisman sınıf Düzeltmesi", accountCode:12040, debit:0.0, credit:950.0, source:'manual' });
+state.rje.addEntry({ adjNo:14, groupLabel:"Amortisman sınıf Düzeltmesi", accountCode:12540, debit:0.0, credit:34000.0, source:'manual' });
+state.rje.addEntry({ adjNo:14, groupLabel:"Amortisman sınıf Düzeltmesi", accountCode:12550, debit:3564.43, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:14, groupLabel:"Amortisman sınıf Düzeltmesi", accountCode:11285, debit:0.0, credit:1038.53, source:'manual' });
+state.rje.addEntry({ adjNo:17, groupLabel:"Sınıflama kaydı-SGK Geliri yanlış hesaba atılmış", accountCode:11600, debit:32380.16, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:17, groupLabel:"Sınıflama kaydı-SGK Geliri yanlış hesaba atılmış", accountCode:10920, debit:0.0, credit:32380.16, source:'manual' });
+state.rje.addEntry({ adjNo:21, groupLabel:"SAP Gider sınıflaması", accountCode:12500, debit:12596.88, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:21, groupLabel:"SAP Gider sınıflaması", accountCode:12230, debit:0.0, credit:12596.88, source:'manual' });
+state.rje.addEntry({ adjNo:23, groupLabel:"Borrowing RJE", accountCode:26140, debit:12856.04, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:23, groupLabel:"Borrowing RJE", accountCode:27380, debit:0.0, credit:12856.04, source:'manual' });
+state.rje.addEntry({ adjNo:25, groupLabel:"tooling düzeltme", accountCode:20220, debit:2.25, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:25, groupLabel:"tooling düzeltme", accountCode:21800, debit:0.0, credit:2.25, source:'manual' });
+state.rje.addEntry({ adjNo:27, groupLabel:"Garanti Danışmanlık Ücreti", accountCode:13790, debit:54178.36, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:27, groupLabel:"Garanti Danışmanlık Ücreti", accountCode:12500, debit:0.0, credit:54178.36, source:'manual' });
+state.rje.addEntry({ adjNo:28, groupLabel:"Etiket-Diğer Gider sınıflaması", accountCode:12050, debit:0.0, credit:619.52, source:'manual' });
+state.rje.addEntry({ adjNo:28, groupLabel:"Etiket-Diğer Gider sınıflaması", accountCode:10420, debit:619.52, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:32, groupLabel:"Sayım Farkları Sınıflaması", accountCode:26160, debit:8203.74, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:32, groupLabel:"Sayım Farkları Sınıflaması", accountCode:21500, debit:0.0, credit:2060.51, source:'manual' });
+state.rje.addEntry({ adjNo:32, groupLabel:"Sayım Farkları Sınıflaması", accountCode:21530, debit:0.0, credit:61.65, source:'manual' });
+state.rje.addEntry({ adjNo:32, groupLabel:"Sayım Farkları Sınıflaması", accountCode:21520, debit:0.0, credit:6081.58, source:'manual' });
+state.rje.addEntry({ adjNo:33, groupLabel:"Kıdem Kapama Gider Sınıflaması (Holding üzerinden)", accountCode:12160, debit:0.0, credit:14691.05, source:'manual' });
+state.rje.addEntry({ adjNo:33, groupLabel:"Kıdem Kapama Gider Sınıflaması (Holding üzerinden)", accountCode:12100, debit:14691.05, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:34, groupLabel:"Stok silme virman", accountCode:10430, debit:2543.49, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:34, groupLabel:"Stok silme virman", accountCode:12760, debit:0.0, credit:2543.49, source:'manual' });
+state.rje.addEntry({ adjNo:35, groupLabel:"Deferred tax reclass", accountCode:21100, debit:410869.23, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:35, groupLabel:"Deferred tax reclass", accountCode:25100, debit:0.0, credit:410869.23, source:'manual' });
+state.rje.addEntry({ adjNo:36, groupLabel:"Kredi kartı sınıflama", accountCode:27310, debit:50.0, credit:0.0, source:'manual' });
+state.rje.addEntry({ adjNo:36, groupLabel:"Kredi kartı sınıflama", accountCode:26370, debit:0.0, credit:50.0, source:'manual' });
+
+function applyFaScheduleToAje() {
+  // remove previously auto-generated fa_schedule entries, recompute, re-add
+  state.aje.entries = state.aje.entries.filter(e => e.source !== 'fa_schedule');
+  const fa = new FaScheduleEngine(state.faAssets);
+  const entries = fa.toAjeEntries(state.periodEnd, 200, 11000);
+  entries.forEach(e => state.aje.addEntry(e));
+  return fa;
+}
+
+function applyEtbToAje() {
+  state.aje.entries = state.aje.entries.filter(e => e.source !== 'etb');
+  const e = state.etb;
+  const adjAmount = e.dbo;
+  state.aje.addEntry({ adjNo:299, groupLabel:'IAS 19 — Kıdem tazminatı karşılığı (DBO)', accountCode:e.accountCode, debit:0, credit:adjAmount, source:'etb', locked:true });
+  state.aje.addEntry({ adjNo:299, groupLabel:'IAS 19 — Kıdem tazminatı karşılığı (DBO)', accountCode:15100, debit:adjAmount, credit:0, source:'etb', locked:true });
+}
+
+applyFaScheduleToAje();
+applyEtbToAje();
+
+let engine, dtEngine;
+function rebuildEngine() {
+  engine = new WtbEngine({
+    accountMap: state.accountMap,
+    trialBalancePY: DEMO_TB_PY,
+    trialBalanceCY: DEMO_TB_CY,
+    carry: state.carry,
+    aje: state.aje,
+    rje: state.rje
+  });
+  dtEngine = new DeferredTaxEngine(engine, {}, state.taxRate);
+}
+rebuildEngine();
+
+function fmt(n) {
+  if (n === null || n === undefined || n === 0) return '<span class="zero">—</span>';
+  const v = Math.round(n);
+  const cls = v < 0 ? 'neg' : '';
+  const formatted = Math.abs(v).toLocaleString('tr-TR');
+  return '<span class="'+cls+'">' + (v<0 ? '('+formatted+')' : formatted) + '</span>';
+}
+function fmtPlain(n) {
+  if (n === null || n === undefined) return '—';
+  return Math.round(n).toLocaleString('tr-TR');
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ============ RENDER ============
+function render() {
+  const root = document.getElementById('app');
+  document.documentElement.dataset.theme = state.theme;
+  if (!currentUser) {
+    root.innerHTML = renderAuth();
+    attachAuthHandlers();
+    return;
+  }
+  root.innerHTML = `
+    <div class="shell">
+      ${renderTopbar()}
+      ${renderSidebar()}
+      <div class="main"><div class="screen active">${renderScreen()}</div></div>
+    </div>
+  `;
+  attachHandlers();
+}
+
+function renderTopbar() {
+  const check = engine.checkAll();
+  const TOL = 0.05;
+  const allOk = Math.abs(check.carry.diff) < TOL && Math.abs(check.aje.diff) < TOL && Math.abs(check.rje.diff) < TOL;
+  const initials = currentUser ? currentUser.name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase() : '?';
+  return `
+  <div class="topbar">
+    <div class="logo"><svg viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="4.5" height="4.5" rx="1" fill="white"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1" fill="white"/></svg></div>
+    <span class="app-title">${t('appName')}</span>
+    <span class="company-badge">${currentUser ? currentUser.company : ''} · WTB</span>
+    <div class="topbar-right">
+      <span class="status-dot ${allOk ? 'ok' : 'bad'}"></span>
+      <span class="status-text">${allOk ? t('allBalanced') : t('hasImbalance')}</span>
+      <div class="lang-toggle">
+        <button class="lang-btn ${state.lang==='tr'?'active':''}" data-action="set-lang" data-lang="tr">TR</button>
+        <button class="lang-btn ${state.lang==='en'?'active':''}" data-action="set-lang" data-lang="en">EN</button>
+      </div>
+      <button class="theme-btn" id="themeBtn" aria-label="Theme"></button>
+      <div class="user-menu">
+        <div class="user-chip" id="userChipBtn">
+          <div class="user-avatar">${initials}</div>
+          <span class="user-name">${currentUser ? currentUser.name : ''}</span>
+        </div>
+        <div class="user-dropdown" id="userDropdown" style="display:none">
+          <div class="user-dropdown-item" data-action="noop">${currentUser ? currentUser.email : ''}</div>
+          <div class="user-dropdown-sep"></div>
+          <div class="user-dropdown-item danger" data-action="logout">${t('logout')}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+const NAV = [
+  { group:'navData', items:[
+    { id:'mizan', label:'navMizan', icon:'M1 1h12v12H1zM1 5h12M5 5v8' },
+    { id:'sabit', label:'navFa', icon:'M2 4h10v8H2zM5 4V3a2 2 0 014 0v1' },
+    { id:'etb', label:'navEtb', icon:'M7 2a5 5 0 100 10A5 5 0 007 2zM7 4v3l2 2' }
+  ]},
+  { group:'navWork', items:[
+    { id:'mapping', label:'navMapping', icon:'M2 4h4M2 7h4M2 10h4M8 4h4M8 7h4M8 10h4' },
+    { id:'carry', label:'navCarry', icon:'M2 5h10M2 9h10M5 2l-3 3 3 3M9 12l3-3-3-3' },
+    { id:'aje', label:'navAje', icon:'M7 1v12M1 7h12' },
+    { id:'rje', label:'navRje', icon:'M2 5h10M2 9h10' },
+    { id:'wtb', label:'navWtb', icon:'M1 1h12v12H1zM1 5h12M1 9h12M5 1v12' }
+  ]},
+  { group:'navOutput', items:[
+    { id:'dt', label:'navDt', icon:'M2 12L7 2l5 10M4 8h6' },
+    { id:'fs', label:'navFs', icon:'M2 2h10v10H2zM5 2v10M2 6h10' },
+    { id:'export', label:'navExport', icon:'M7 1v8M4 6l3 3 3-3M2 11h10v2H2z' }
+  ]}
+];
+
+function navBadge(id) {
+  if (id === 'mapping') {
+    const unmapped = state.accountMap.all().filter(a => !a.ifrsLine).length;
+    return unmapped > 0 ? `<span class="nav-badge nb-warn">${unmapped}</span>` : `<span class="nav-badge nb-ok">✓</span>`;
+  }
+  if (id === 'carry') { const c = state.carry.checkBalance(); return Math.abs(c.diff) < 0.05 ? `<span class="nav-badge nb-ok">✓</span>` : `<span class="nav-badge nb-bad">!</span>`; }
+  if (id === 'aje') { const c = state.aje.checkBalance(); return Math.abs(c.diff) < 0.05 ? `<span class="nav-badge nb-ok">${state.aje.groupedByAdjNo().length}</span>` : `<span class="nav-badge nb-bad">!</span>`; }
+  if (id === 'rje') { const c = state.rje.checkBalance(); return Math.abs(c.diff) < 0.05 ? `<span class="nav-badge nb-ok">${state.rje.groupedByAdjNo().length}</span>` : `<span class="nav-badge nb-bad">!</span>`; }
+  if (id === 'wtb') return `<span class="nav-badge nb-lock">🔒</span>`;
+  if (id === 'sabit') return `<span class="nav-badge nb-lock">🔒</span>`;
+  return '';
+}
+
+function renderSidebar() {
+  return `<div class="sidebar">${NAV.map(g => `
+    <div class="sidebar-section">
+      <div class="sidebar-label">${t(g.group)}</div>
+      ${g.items.map(it => `
+        <div class="nav-item ${state.activeScreen===it.id?'active':''}" data-nav="${it.id}">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:.7;flex-shrink:0"><path d="${it.icon}"/></svg>
+          ${t(it.label)}
+          ${navBadge(it.id)}
+        </div>`).join('')}
+    </div>`).join('')}</div>`;
+}
+
+function renderScreen() {
+  switch (state.activeScreen) {
+    case 'mizan': return renderMizan();
+    case 'sabit': return renderSabit();
+    case 'etb': return renderEtb();
+    case 'mapping': return renderMapping();
+    case 'carry': return renderJournal('carry', t('carryTitle'), t('carryBalance'));
+    case 'aje': return renderJournal('aje', t('ajeTitle'), t('ajeBalance'));
+    case 'rje': return renderJournal('rje', t('rjeTitle'), t('rjeBalance'));
+    case 'wtb': return renderWtb();
+    case 'dt': return renderDt();
+    case 'fs': return renderFs();
+    case 'export': return renderExport();
+    default: return '';
+  }
+}
+
+// ---------- Mizan ----------
+function renderMizan() {
+  const cyCheck = engine.tbCY.checkBalance();
+  const pyCheck = engine.tbPY.checkBalance();
+  const rowsHtml = (tb, codes) => codes.map(code => {
+    const acc = state.accountMap.get(code);
+    const bal = tb.balanceForCode(code);
+    if (!bal) return '';
+    return `<tr><td class="tl mono">${code}</td><td class="tl">${acc ? acc.accountName : '—'}</td><td>${fmt(bal)}</td></tr>`;
+  }).join('');
+  const cyCodes = Array.from(engine.tbCY.byCode.keys());
+  const pyCodes = Array.from(engine.tbPY.byCode.keys());
+  return `
+  <div class="screen-header">
+    <span class="screen-title">${t('mizanTitle')}</span>
+    <div class="btn-row">
+      <button class="btn" data-action="paste-mizan">${t('pasteCsv')}</button>
+    </div>
+  </div>
+  <div class="g3">
+    <div class="metric"><div class="metric-label">${t('cyRowCount')}</div><div class="metric-val">${cyCodes.length}</div><div class="metric-sub">2025</div></div>
+    <div class="metric"><div class="metric-label">${t('pyRowCount')}</div><div class="metric-val">${pyCodes.length}</div><div class="metric-sub">2024</div></div>
+    <div class="metric"><div class="metric-label">${t('balanceLbl')}</div><div class="metric-val ${cyCheck.diff===0?'pos':'neg'}">${cyCheck.diff===0?'✓ OK':'✗ '+fmtPlain(cyCheck.diff)}</div><div class="metric-sub">${t('debitCredit')}</div></div>
+  </div>
+  <div class="stab-bar">
+    <div class="stab active" data-stab="mcy" data-stabgroup="miz">${t('cyTab')}</div>
+    <div class="stab" data-stab="mpy" data-stabgroup="miz">${t('pyTab')}</div>
+  </div>
+  <div class="card" style="border-top:none;border-radius:0 0 10px 10px;width:fit-content;min-width:480px">
+    <div id="mcy" class="stab-panel active tbl-wrap">
+      <table class="tbl" style="width:auto;min-width:480px"><thead><tr><th class="tl" style="width:64px">${t('code')}</th><th class="tl" style="width:300px">${t('accName')}</th><th style="width:110px">${t('balance')}</th></tr></thead>
+      <tbody>${rowsHtml(engine.tbCY, cyCodes)}</tbody></table>
+    </div>
+    <div id="mpy" class="stab-panel tbl-wrap">
+      <table class="tbl" style="width:auto;min-width:480px"><thead><tr><th class="tl" style="width:64px">${t('code')}</th><th class="tl" style="width:300px">${t('accName')}</th><th style="width:110px">${t('balance')}</th></tr></thead>
+      <tbody>${rowsHtml(engine.tbPY, pyCodes)}</tbody></table>
+    </div>
+  </div>
+  <div class="tbl-note"><span>${t('codeLinkNote')}</span><span>${t('amountsTl')}</span></div>`;
+}
+
+// ---------- Sabit kıymetler (FA schedule) ----------
+function renderSabit() {
+  const fa = new FaScheduleEngine(state.faAssets);
+  const rows = fa.computeRows(state.periodEnd);
+  const totalCost = state.faAssets.reduce((s,a)=>s+a.cost,0);
+  const totalDiff = rows.reduce((s,r)=>s+r.diff,0);
+  return `
+  <div class="screen-header">
+    <span class="screen-title">${t('faTitle')}</span>
+    <div class="btn-row"><span class="badge b-lock">🔒 ${t('faAutoFlow')}</span></div>
+  </div>
+  <div class="g3">
+    <div class="metric"><div class="metric-label">${t('totalCost')}</div><div class="metric-val">${fmtPlain(totalCost)}</div><div class="metric-sub">TL</div></div>
+    <div class="metric"><div class="metric-label">${t('assetCount')}</div><div class="metric-val">${rows.length}</div><div class="metric-sub">${t('pcs')}</div></div>
+    <div class="metric"><div class="metric-label">${t('vukDiffAje')}</div><div class="metric-val ${totalDiff<0?'neg':'pos'}">${fmtPlain(totalDiff)}</div><div class="metric-sub">TL · ${t('locked')}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">${t('iasTitle')}</span><span class="badge b-lock">🔒 ${t('formula')}</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th class="tl" style="width:170px">${t('assetName')}</th><th style="width:60px">${t('costCode')}</th><th style="width:90px">${t('cost')}</th><th style="width:85px">${t('activationDate')}</th><th style="width:50px">${t('life')}</th><th style="width:80px">${t('ifrsDep')}</th><th style="width:80px">${t('statDep')}</th><th style="width:70px">${t('diff')}</th><th style="width:30px"></th></tr></thead>
+      <tbody>${rows.map((r,i) => `<tr><td class="tl">${r.name}</td><td class="mono tl">${r.accountCodeCost}</td><td>${fmt(r.cost)}</td><td class="tl">${r.activationDate}</td><td>${r.usefulLifeYears} ${state.lang==='tr'?'yıl':'yr'}</td><td>${fmt(r.ifrsDep)}</td><td>${fmt(r.statutoryDep)}</td><td class="adj">${fmt(r.diff)} ${Math.abs(r.diff)>=0.5?'<span class="lock-icon">🔒</span>':''}</td><td><button class="je-del" data-action="del-fa" data-idx="${i}" title="${state.lang==='tr'?'Sil':'Delete'}">✕</button></td></tr>`).join('')}
+      <tr class="tot"><td class="tl">${t('total')}</td><td></td><td>${fmt(totalCost)}</td><td></td><td></td><td>${fmt(rows.reduce((s,r)=>s+r.ifrsDep,0))}</td><td>${fmt(rows.reduce((s,r)=>s+r.statutoryDep,0))}</td><td class="adj">${fmt(totalDiff)}</td><td></td></tr>
+      </tbody></table></div>
+    <div class="tbl-note"><span>${t('faLockNote')}</span><span>${t('dayNote')}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">${t('addAsset')}</span></div>
+    <div style="padding:14px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+      <div style="flex:1 1 220px;min-width:180px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">${t('name')}</div>
+        <input id="faName" placeholder="${t('assetName')}" style="width:100%">
+      </div>
+      <div style="width:130px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">${t('costCode')}</div>
+        <span class="autocomplete-wrap" style="display:block"><input id="faCostCode" data-ac-input="1" autocomplete="off" placeholder="20020" style="width:100%"></span>
+        <div id="faCostCodeName" style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.3;min-height:13px"></div>
+      </div>
+      <div style="width:130px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">${t('depCode')}</div>
+        <span class="autocomplete-wrap" style="display:block"><input id="faDepCode" data-ac-input="1" autocomplete="off" placeholder="20030" style="width:100%"></span>
+        <div id="faDepCodeName" style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.3;min-height:13px"></div>
+      </div>
+      <div style="width:70px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">${t('life')}</div>
+        <input id="faLife" placeholder="10" style="width:100%">
+      </div>
+      <div style="width:110px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">${t('cost')}</div>
+        <input id="faCost" placeholder="1000000" style="width:100%">
+      </div>
+      <button class="btn btn-p" data-action="add-fa" style="align-self:flex-end;height:30px">${t('addBtn')}</button>
+    </div>
+  </div>`;
+}
+
+// ---------- ETB ----------
+function renderEtb() {
+  const e = state.etb;
+  return `
+  <div class="screen-header"><span class="screen-title">${t('etbTitle')}</span><div class="btn-row"><button class="btn btn-p" data-action="save-etb">${t('saveGenAje')}</button></div></div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">${t('assumptions')==='VARSAYIMLAR'?'Varsayımlar ve sonuçlar':'Assumptions & results'}</span><span class="badge b-ok">${t('manualEntry')}</span></div>
+    <div style="padding:14px 16px" class="g2">
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace">${t('assumptions')}</div>
+        <div class="field-row"><span>${t('discountRate')}</span><input id="etbDiscount" value="${e.discountRate}"></div>
+        <div class="field-row"><span>${t('salaryIncrease')}</span><input id="etbSalary" value="${e.salaryIncrease}"></div>
+        <div class="field-row"><span>${t('turnoverRate')}</span><input id="etbTurnover" value="${e.turnoverRate}"></div>
+        <div class="field-row"><span>${t('employeeCount')}</span><input id="etbEmployees" value="${e.employeeCount}"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace">${t('results')}</div>
+        <div class="field-row"><span>${t('dbo')}</span><input id="etbDbo" value="${e.dbo}"></div>
+        <div class="field-row"><span>${t('serviceCost')}</span><input id="etbServiceCost" value="${e.currentServiceCost}"></div>
+        <div class="field-row"><span>${t('interestCost')}</span><input id="etbInterest" value="${e.interestCost}"></div>
+        <div class="field-row"><span>${t('ociRemeasure')}</span><input id="etbOci" value="${e.oci}"></div>
+      </div>
+    </div>
+    <div class="tbl-note"><span>${t('etbLockNote')}</span><span>${t('accCodeLbl')}: ${e.accountCode}</span></div>
+  </div>`;
+}
+
+// ---------- Mapping ----------
+function renderMapping() {
+  const accounts = state.accountMap.all();
+  const unmapped = accounts.filter(a => !a.ifrsLine).length;
+  const ifrsLines = [...new Set(DEMO_ACCOUNT_ROWS.map(a=>a.ifrsLine).filter(Boolean))];
+  return `
+  <div class="screen-header">
+    <span class="screen-title">${t('mappingTitle')}</span>
+    <div class="btn-row">
+      <span class="badge ${unmapped>0?'b-warn':'b-ok'}">${unmapped>0? unmapped+' '+t('unmapped') : t('completed')}</span>
+      <button class="btn" data-action="add-account">${t('addAccount')}</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">${t('mappingTbl')}</span><span class="badge b-blue">${accounts.length} ${t('accounts')}</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th class="tl" style="width:64px">${t('code')}</th><th class="tl" style="width:200px">${t('accName')}</th><th style="width:80px">${t('cyBalance')}</th><th class="tl">${t('ifrsLine')}</th><th style="width:60px">${t('note')}</th></tr></thead>
+      <tbody>${accounts.map(a => {
+        const bal = engine.tbCY.balanceForCode(a.accountCode);
+        return `<tr class="${!a.ifrsLine?'unmapped':''}">
+          <td class="tl mono">${a.accountCode}</td>
+          <td class="tl">${a.accountName}</td>
+          <td>${fmt(bal)}</td>
+          <td class="tl"><select data-map-code="${a.accountCode}" style="width:100%;font-size:11px;padding:3px 6px;border:0.5px solid var(--border-s);border-radius:5px;background:var(--surface);color:var(--text)">
+            <option value="">${t('chooseOption')}</option>
+            ${ifrsLines.map(l => `<option value="${l}" ${a.ifrsLine===l?'selected':''}>${ifrsLineLabel(l)}</option>`).join('')}
+          </select></td>
+          <td><input data-note-code="${a.accountCode}" value="${a.noteRef||''}" style="width:40px;text-align:center;font-size:11px;padding:3px;border:0.5px solid var(--border-s);border-radius:5px;background:var(--surface);color:var(--text)"></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div class="tbl-note"><span>${t('unmappedNote')}</span><span>${t('noteRefNote')}</span></div>
+  </div>`;
+}
+
+// ---------- Journal sheets (Carry / AJE / RJE) ----------
+function renderJournal(key, title, balanceLabel) {
+  const sheet = state[key];
+  const check = sheet.checkBalance();
+  const groups = sheet.groupedByAdjNo();
+  return `
+  <div class="screen-header">
+    <span class="screen-title">${title}</span>
+    <div class="btn-row">
+      <span class="badge ${Math.abs(check.diff)<0.05?'b-ok':'b-bad'}">${Math.abs(check.diff)<0.05?'✓ '+t('journalBalanced'):'✗ '+t('journalImbalance')+': '+fmtPlain(check.diff)}</span>
+      <button class="btn btn-p" data-action="add-je" data-sheet="${key}">${t('addManualEntry')}</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">${balanceLabel}</span><span class="badge b-blue">${groups.length} ${t('recordGroups')}</span></div>
+    <div class="je-form hdr"><span>${t('ref')}</span><span>${t('accCode')}</span><span>${t('description')}</span><span>${t('dr')}</span><span>${t('cr')}</span><span>${t('note')}</span><span>${t('source')}</span><span></span></div>
+    ${(() => {
+      let html = '';
+      let lastAdjNo = null;
+      sheet.entries.forEach((e,i) => {
+        const acc = state.accountMap.get(e.accountCode);
+        const isNewGroup = e.adjNo !== lastAdjNo;
+        lastAdjNo = e.adjNo;
+        html += `<div class="je-form${isNewGroup && i>0 ? ' je-group-sep':''}">
+          <span class="mono" style="font-size:10px;color:var(--text3)">${key.toUpperCase()}-${String(e.adjNo).padStart(2,'0')}</span>
+          <span class="autocomplete-wrap">
+            <input value="${e.accountCode}" data-je-field="accountCode" data-je-idx="${i}" data-je-sheet="${key}" data-ac-input="1" autocomplete="off" ${e.locked?'disabled':''}>
+          </span>
+          <span style="font-size:11px;color:var(--text2)" title="${e.groupLabel||''}">${acc ? acc.accountName : (e.groupLabel||'—')}</span>
+          <input value="${e.debit||''}" placeholder="—" data-je-field="debit" data-je-idx="${i}" data-je-sheet="${key}" style="text-align:right" ${e.locked?'disabled':''}>
+          <input value="${e.credit||''}" placeholder="—" data-je-field="credit" data-je-idx="${i}" data-je-sheet="${key}" style="text-align:right" ${e.locked?'disabled':''}>
+          <input value="${e.comment||''}" placeholder="—" data-je-field="comment" data-je-idx="${i}" data-je-sheet="${key}">
+          <span class="badge ${e.locked?'b-lock':'b-ok'}" style="font-size:9px">${e.locked?'🔒 '+(e.source==='fa_schedule'?'FA':'ETB'):'✏ '+t('manual')}</span>
+          <button class="je-del" data-action="del-je" data-sheet="${key}" data-idx="${i}" ${e.locked?'disabled style="visibility:hidden"':''}>✕</button>
+        </div>`;
+      });
+      return html || `<div class="empty-state">${t('noEntries')}</div>`;
+    })()}
+    <div class="tbl-note"><span>${t('totalDr')}: ${fmtPlain(check.debit)}</span><span>${t('totalCr')}: ${fmtPlain(check.credit)}</span><span>🔒 ${t('autoLockedNote')}</span></div>
+  </div>`;
+}
+
+// ---------- WTB (read-only, fully formula-driven) ----------
+function renderWtb() {
+  const rows = engine.computeRows();
+  const bySection = new Map();
+  rows.forEach(r => {
+    if (!bySection.has(r.section)) bySection.set(r.section, []);
+    bySection.get(r.section).push(r);
+  });
+  const sectionLabelsTr = {
+    'Non-current assets':'Duran varlıklar','Current assets':'Dönen varlıklar',
+    'Non-current liability':'Uzun vadeli yükümlülükler','Current liabilities':'Kısa vadeli yükümlülükler',
+    'Equity':'Özkaynaklar','Revenue':'Hasılat','Cogs':'Satışların maliyeti',
+    'Distribution':'Pazarlama giderleri','Administration':'Genel yönetim giderleri',
+    'Interest income':'Faiz geliri','Interest expense':'Faiz gideri','Tax expense':'Vergi gideri'
+  };
+  const sectionLabelsEn = {
+    'Non-current assets':'Non-current assets','Current assets':'Current assets',
+    'Non-current liability':'Non-current liabilities','Current liabilities':'Current liabilities',
+    'Equity':'Equity','Revenue':'Revenue','Cogs':'Cost of goods sold',
+    'Distribution':'Distribution expenses','Administration':'Administrative expenses',
+    'Interest income':'Interest income','Interest expense':'Interest expense','Tax expense':'Tax expense'
+  };
+  const sectionLabels = state.lang === 'en' ? sectionLabelsEn : sectionLabelsTr;
+  let bodyHtml = '';
+  bySection.forEach((sectionRows, section) => {
+    bodyHtml += `<tr class="sec"><td colspan="8">${sectionLabels[section]||section}</td></tr>`;
+    sectionRows.forEach(r => {
+      const carryNet = round2(r.carryDr - r.carryCr);
+      const ajeNet = round2(r.ajeDr - r.ajeCr);
+      const rjeNet = round2(r.rjeDr - r.rjeCr);
+      bodyHtml += `<tr>
+        <td class="tl mono">${r.accountCode}</td>
+        <td class="tl">${r.accountName}</td>
+        <td>${fmt(r.statutory)}</td><td>${fmt(r.statutoryPY)}</td>
+        <td class="adj">${fmt(carryNet)}</td>
+        <td class="adj">${fmt(ajeNet)}</td>
+        <td class="adj">${fmt(rjeNet)}</td>
+        <td>${fmt(r.ifrsBalance)}</td>
+      </tr>`;
+    });
+  });
+  const totalStat = rows.reduce((s,r)=>s+r.statutory,0);
+  const totalIfrs = rows.reduce((s,r)=>s+r.ifrsBalance,0);
+  const totalCarryNet = round2(rows.reduce((s,r)=>s+(r.carryDr-r.carryCr),0));
+  const totalAjeNet = round2(rows.reduce((s,r)=>s+(r.ajeDr-r.ajeCr),0));
+  const totalRjeNet = round2(rows.reduce((s,r)=>s+(r.rjeDr-r.rjeCr),0));
+  return `
+  <div class="screen-header">
+    <span class="screen-title">${t('wtbTitle')}</span>
+    <div class="btn-row"><span class="badge b-lock">${t('readOnly')}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">${t('wtbAllCols')}</span><span class="badge b-ok">F+G+H+I=J</span></div>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:760px">
+      <thead>
+        <tr><th class="tl" style="width:64px">${t('code')}</th><th class="tl" style="width:180px">${t('accName')}</th>
+          <th style="width:90px">${t('cyTab')}</th><th style="width:90px">${t('pyTab')}</th>
+          <th style="width:90px">${t('navCarry')} (${t('netLbl')})</th>
+          <th style="width:90px">${t('navAje')} (${t('netLbl')})</th>
+          <th style="width:90px">${t('navRje')} (${t('netLbl')})</th>
+          <th style="width:100px">${t('ifrsBalance')}</th></tr>
+      </thead>
+      <tbody>${bodyHtml}
+        <tr class="tot"><td class="tl" colspan="2">${t('totalStatNet')}</td><td colspan="2">${fmt(totalStat)}</td><td class="adj">${fmt(totalCarryNet)}</td><td class="adj">${fmt(totalAjeNet)}</td><td class="adj">${fmt(totalRjeNet)}</td><td>${fmt(totalIfrs)}</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tbl-note"><span>${t('wtbRowNote')}</span><span>${state.lang==='tr'?'Net = Dr − Cr':'Net = Dr − Cr'}</span><span>${t('amountsTl')}</span></div>
+  </div>`;
+}
+
+// ---------- Deferred Tax ----------
+function renderDt() {
+  const rows = dtEngine.computeRows().filter(r => Math.abs(r.difference) >= 1);
+  const summary = dtEngine.summary();
+  return `
+  <div class="screen-header"><span class="screen-title">${t('dtTitle')}</span>
+    <div class="btn-row"><span style="font-size:11px;color:var(--text2)">${t('taxRateLbl')}: </span><input id="taxRateInput" value="${(state.taxRate*100).toFixed(1)}" style="width:60px;font-size:11px;padding:3px 6px;border:0.5px solid var(--border-s);border-radius:5px;background:var(--surface);color:var(--text);text-align:right">
+    <button class="btn btn-sm" data-action="update-tax-rate">%</button></div>
+  </div>
+  <div class="g3">
+    <div class="metric"><div class="metric-label">${t('taxRateLbl')}</div><div class="metric-val">${(state.taxRate*100).toFixed(1)}%</div><div class="metric-sub">${t('taxRateSub')}</div></div>
+    <div class="metric"><div class="metric-label">${t('dtaLbl')}</div><div class="metric-val pos">${fmtPlain(summary.dta)}</div><div class="metric-sub">TL</div></div>
+    <div class="metric"><div class="metric-label">${t('dtlLbl')}</div><div class="metric-val neg">${fmtPlain(summary.dtl)}</div><div class="metric-sub">TL</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">${t('tempDiffAnalysis')}</span><span class="badge b-lock">🔒 ${t('autoFromWtb')}</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th class="tl" style="width:60px">${t('code')}</th><th class="tl">${t('accName')}</th><th style="width:90px">${t('statRje')}</th><th style="width:90px">IFRS</th><th style="width:90px">${t('diff')}</th><th style="width:50px">${t('rate')}</th><th style="width:90px">${t('defTax')}</th><th class="tl" style="width:90px">${t('cls')}</th></tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td class="tl mono">${r.accountCode}</td><td class="tl">${r.accountName}</td>
+        <td>${fmt(r.statPlusRje)}</td><td>${fmt(r.ifrsBalance)}</td><td>${fmt(r.difference)}</td>
+        <td>${(r.rate*100).toFixed(1)}%</td><td>${fmt(r.defTaxAmount)}</td>
+        <td class="tl" style="font-size:10px">${r.classification==='Deferred Tax Assets'?'DTA':'DTL'}</td>
+      </tr>`).join('') || `<tr><td colspan="8" class="empty-state">${t('noTempDiff')}</td></tr>`}
+      <tr class="tot"><td class="tl" colspan="6">${t('net')}</td><td>${fmt(summary.net)}</td><td></td></tr>
+      </tbody>
+    </table></div>
+    <div class="tbl-note"><span>${t('diffFormulaNote')}</span><span>${t('defTaxFormulaNote')}</span></div>
+  </div>`;
+}
+
+// ---------- IFRS financial statements (output) ----------
+function renderFs() {
+  const groups = engine.groupByIfrsLine();
+  const byLine = {};
+  groups.forEach(g => byLine[g.ifrsLine] = g);
+  const lbl = ifrsLineLabel;
+  const dt = dtEngine.summary();
+  const row = (label) => { const g = byLine[label]; const val = g ? g.total : 0; return `<tr><td class="tl" style="padding-left:14px">${lbl(label)}</td><td>${fmt(val)}</td><td>${g?fmt(g.totalPY):'—'}</td></tr>`; };
+  // Income statement: ledger keeps revenue credit-signed (negative) and expenses debit-signed (positive).
+  // Presentation flips this: revenue shows positive, expenses show negative (parentheses).
+  const rowIs = (label) => {
+    const g = byLine[label];
+    const val = g ? -g.total : 0;
+    const valPY = g ? -g.totalPY : 0;
+    return `<tr><td class="tl" style="padding-left:14px">${lbl(label)}</td><td>${fmt(val)}</td><td>${g?fmt(valPY):'—'}</td></tr>`;
+  };
+  return `
+  <div class="screen-header"><span class="screen-title">${t('fsTitle')}</span><div class="btn-row"><span class="badge b-lock">${t('autoFromWtb2')}</span></div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><span class="card-title">${t('bsTitle')}</span></div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th class="tl">${t('item')}</th><th style="width:90px">31.12.2025</th><th style="width:90px">31.12.2024</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="3">${t('assetsHdr')}</td></tr>
+          ${row('Nakit ve nakit benzerleri')}${row('Ticari alacaklar')}${row('Stoklar')}
+          ${row('Maddi duran varlıklar')}${row('Maddi olmayan duran varlıklar')}
+          <tr><td class="tl" style="padding-left:14px">${t('defTaxAsset')}</td><td>${fmt(dt.dta)}</td><td>—</td></tr>
+          <tr class="sec"><td colspan="3">${t('liabHdr')}</td></tr>
+          ${row('Ticari borçlar')}${row('Finansal borçlar')}${row('Çalışanlara sağlanan faydalar')}${row('Diğer kısa vadeli yükümlülükler')}
+          <tr><td class="tl" style="padding-left:14px">${t('defTaxLiab')}</td><td>${fmt(dt.dtl)}</td><td>—</td></tr>
+          <tr class="sec"><td colspan="3">${t('equityHdr')}</td></tr>
+          ${row('Geçmiş yıl kârları')}${row('Dönem net kârı')}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">${t('isTitle')}</span></div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th class="tl">${t('item')}</th><th style="width:90px">2025</th><th style="width:90px">2024</th></tr></thead>
+        <tbody>
+          ${rowIs('Hasılat')}${rowIs('Satışların maliyeti')}
+          ${rowIs('Pazarlama, satış ve dağıtım giderleri')}${rowIs('Genel yönetim giderleri')}
+          ${rowIs('Finansman gelirleri')}${rowIs('Finansman giderleri')}${rowIs('Gelir vergisi gideri')}
+        </tbody>
+      </table></div>
+      <div class="tbl-note"><span>${t('noteRefSource')}</span><span>${t('amountsTl')}</span></div>
+    </div>
+  </div>`;
+}
+
+// ---------- Export ----------
+function renderExport() {
+  return `
+  <div class="screen-header"><span class="screen-title">${t('exportTitle')}</span></div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--border)">
+      <span style="font-size:22px">📊</span>
+      <div style="flex:1"><div style="font-size:12px;font-weight:500">${t('exportXlsxTitle')}</div><div style="font-size:11px;color:var(--text2)">${t('exportXlsxSub')}</div></div>
+      <button class="btn btn-p" data-action="export-info">${t('download')}</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--border)">
+      <span style="font-size:22px">📄</span>
+      <div style="flex:1"><div style="font-size:12px;font-weight:500">${t('exportPdfTitle')}</div><div style="font-size:11px;color:var(--text2)">${t('exportPdfSub')}</div></div>
+      <button class="btn" data-action="export-info">${t('download')}</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px">
+      <span style="font-size:22px">📋</span>
+      <div style="flex:1"><div style="font-size:12px;font-weight:500">${t('exportLeadTitle')}</div><div style="font-size:11px;color:var(--text2)">${t('exportLeadSub')}</div></div>
+      <button class="btn" data-action="export-info">${t('download')}</button>
+    </div>
+  </div>`;
+}
+
+// ---------- Auth (demo, localStorage-backed) ----------
+function renderAuth() {
+  const isSignup = state.authScreen === 'signup';
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-top">
+        <div class="auth-logo"><svg viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="4.5" height="4.5" rx="1" fill="white"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1" fill="white"/></svg></div>
+        <div class="lang-toggle">
+          <button class="lang-btn ${state.lang==='tr'?'active':''}" data-action="set-lang" data-lang="tr">TR</button>
+          <button class="lang-btn ${state.lang==='en'?'active':''}" data-action="set-lang" data-lang="en">EN</button>
+        </div>
+      </div>
+      <div class="auth-title">${isSignup ? t('authSignupTitle') : t('authLoginTitle')}</div>
+      <div class="auth-sub">${isSignup ? t('authSignupSub') : t('authLoginSub')}</div>
+      <div class="auth-error ${state.authError?'show':''}" id="authError">${state.authError||''}</div>
+      <form id="authForm">
+        ${isSignup ? `
+        <div class="auth-field"><label>${t('fullName')}</label><input type="text" id="authName" autocomplete="name"></div>
+        <div class="auth-field"><label>${t('companyName')}</label><input type="text" id="authCompany" autocomplete="organization"></div>
+        ` : ''}
+        <div class="auth-field"><label>${t('email')}</label><input type="email" id="authEmail" autocomplete="email"></div>
+        <div class="auth-field"><label>${t('password')}</label><input type="password" id="authPassword" autocomplete="${isSignup?'new-password':'current-password'}"></div>
+        <button type="submit" class="auth-btn">${isSignup ? t('signupBtn') : t('loginBtn')}</button>
+      </form>
+      <div class="auth-switch">
+        ${isSignup ? t('haveAccount') : t('noAccount')}
+        <a data-action="switch-auth" data-target="${isSignup?'login':'signup'}">${isSignup ? t('loginLink') : t('signupLink')}</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------- Account code autocomplete (search by code or name) ----------
+function setupAccountAutocomplete() {
+  const inputs = document.querySelectorAll('[data-ac-input]');
+  inputs.forEach(input => {
+    if (input.disabled) return;
+    const wrap = input.closest('.autocomplete-wrap');
+    if (!wrap) return;
+
+    const closeList = () => { const l = wrap.querySelector('.autocomplete-list'); if (l) l.remove(); };
+
+    const openList = (query) => {
+      closeList();
+      const q = query.trim().toLowerCase();
+      if (!q) return;
+      const matches = state.accountMap.all().filter(a =>
+        String(a.accountCode).toLowerCase().includes(q) || a.accountName.toLowerCase().includes(q)
+      ).slice(0, 8);
+      if (matches.length === 0) return;
+      const list = document.createElement('div');
+      list.className = 'autocomplete-list';
+      matches.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.innerHTML = `<span class="ac-code">${a.accountCode}</span><span class="ac-name">${a.accountName}</span>`;
+        item.onmousedown = (ev) => {
+          ev.preventDefault();
+          input.value = a.accountCode;
+          closeList();
+          input.dispatchEvent(new Event('change'));
+        };
+        list.appendChild(item);
+      });
+      wrap.appendChild(list);
+    };
+
+    input.oninput = () => openList(input.value);
+    input.onfocus = () => openList(input.value);
+    input.onblur = () => setTimeout(closeList, 150);
+  });
+}
+
+function attachAuthHandlers() {
+  document.querySelectorAll('[data-action="set-lang"]').forEach(el => {
+    el.onclick = () => { state.lang = el.dataset.lang; try { localStorage.setItem('wtb_lang', state.lang); } catch(e){}; render(); };
+  });
+  const switchLink = document.querySelector('[data-action="switch-auth"]');
+  if (switchLink) switchLink.onclick = () => { state.authScreen = switchLink.dataset.target; state.authError=''; render(); };
+  const form = document.getElementById('authForm');
+  if (form) form.onsubmit = (ev) => {
+    ev.preventDefault();
+    const isSignup = state.authScreen === 'signup';
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if (isSignup) {
+      const name = document.getElementById('authName').value.trim();
+      const company = document.getElementById('authCompany').value.trim();
+      if (!name || !company || !email || !password) { state.authError = t('fillAllFields'); render(); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { state.authError = t('invalidEmail'); render(); return; }
+      if (password.length < 6) { state.authError = t('shortPassword'); render(); return; }
+      saveSession({ name, company, email });
+    } else {
+      if (!email || !password) { state.authError = t('fillAllFields'); render(); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { state.authError = t('invalidEmail'); render(); return; }
+      const namePart = email.split('@')[0];
+      const niceName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+      saveSession({ name: niceName, company: 'Örnek Sanayi A.Ş.', email });
+    }
+    state.authError = '';
+    render();
+  };
+}
+
+// ============ EVENT HANDLERS ============
+function attachHandlers() {
+  document.getElementById('themeBtn').onclick = () => { state.theme = state.theme==='dark'?'light':'dark'; try { localStorage.setItem('wtb_theme', state.theme); } catch(e){}; render(); };
+  document.querySelectorAll('[data-action="set-lang"]').forEach(el => {
+    el.onclick = () => { state.lang = el.dataset.lang; try { localStorage.setItem('wtb_lang', state.lang); } catch(e){}; render(); };
+  });
+  const userChip = document.getElementById('userChipBtn');
+  if (userChip) userChip.onclick = (ev) => {
+    ev.stopPropagation();
+    const dd = document.getElementById('userDropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  };
+  document.addEventListener('click', () => {
+    const dd = document.getElementById('userDropdown');
+    if (dd) dd.style.display = 'none';
+  }, { once: true });
+  const logoutBtn = document.querySelector('[data-action="logout"]');
+  if (logoutBtn) logoutBtn.onclick = (ev) => { ev.stopPropagation(); clearSession(); state.authScreen='login'; render(); };
+
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    el.onclick = () => { state.activeScreen = el.dataset.nav; render(); };
+  });
+  document.querySelectorAll('[data-stab]').forEach(el => {
+    el.onclick = () => {
+      const group = el.dataset.stabgroup;
+      document.querySelectorAll(`[data-stabgroup="${group}"]`).forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.querySelectorAll('.stab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(el.dataset.stab).classList.add('active');
+    };
+  });
+
+  // Account code autocomplete (Carry/AJE/RJE account input)
+  setupAccountAutocomplete();
+
+  // Journal entry edits
+  document.querySelectorAll('[data-je-field]').forEach(el => {
+    el.onchange = () => {
+      const sheet = state[el.dataset.jeSheet];
+      const idx = parseInt(el.dataset.jeIdx);
+      const field = el.dataset.jeField;
+      const entry = sheet.entries[idx];
+      if (field === 'accountCode' || field === 'comment') entry[field] = el.value.trim();
+      else entry[field] = parseFloat(el.value.replace(/[.,]/g,'')) || 0;
+      rebuildEngine();
+      render();
+    };
+  });
+
+  document.querySelectorAll('[data-action="del-je"]').forEach(el => {
+    el.onclick = () => {
+      const sheet = state[el.dataset.sheet];
+      sheet.entries.splice(parseInt(el.dataset.idx), 1);
+      rebuildEngine();
+      render();
+      toast(t('entryDeleted'));
+    };
+  });
+
+  document.querySelectorAll('[data-action="add-je"]').forEach(el => {
+    el.onclick = () => {
+      const sheet = state[el.dataset.sheet];
+      const maxAdj = Math.max(0, ...sheet.entries.map(e => e.adjNo || 0));
+      sheet.addEntry({ adjNo: maxAdj + 1, groupLabel: 'Yeni manuel kayıt', accountCode: '', debit: 0, credit: 0, source: 'manual' });
+      rebuildEngine();
+      render();
+    };
+  });
+
+  // Mapping edits
+  document.querySelectorAll('[data-map-code]').forEach(el => {
+    el.onchange = () => {
+      const acc = state.accountMap.get(el.dataset.mapCode);
+      if (acc) { acc.ifrsLine = el.value || null; rebuildEngine(); render(); }
+    };
+  });
+  document.querySelectorAll('[data-note-code]').forEach(el => {
+    el.onchange = () => {
+      const acc = state.accountMap.get(el.dataset.noteCode);
+      if (acc) acc.noteRef = el.value;
+    };
+  });
+
+  // FA schedule add
+  const faCostCodeEl = document.getElementById('faCostCode');
+  const faDepCodeEl = document.getElementById('faDepCode');
+  const updateFaCodePreview = (input, previewEl) => {
+    if (!input || !previewEl) return;
+    const acc = state.accountMap.get(input.value.trim());
+    previewEl.textContent = acc ? `→ ${acc.accountName}` : '';
+  };
+  if (faCostCodeEl) {
+    faCostCodeEl.addEventListener('input', () => updateFaCodePreview(faCostCodeEl, document.getElementById('faCostCodeName')));
+    faCostCodeEl.addEventListener('change', () => updateFaCodePreview(faCostCodeEl, document.getElementById('faCostCodeName')));
+  }
+  if (faDepCodeEl) {
+    faDepCodeEl.addEventListener('input', () => updateFaCodePreview(faDepCodeEl, document.getElementById('faDepCodeName')));
+    faDepCodeEl.addEventListener('change', () => updateFaCodePreview(faDepCodeEl, document.getElementById('faDepCodeName')));
+  }
+  const addFaBtn = document.querySelector('[data-action="add-fa"]');
+  if (addFaBtn) addFaBtn.onclick = () => {
+    const name = document.getElementById('faName').value.trim();
+    const costCode = document.getElementById('faCostCode').value.trim();
+    const depCode = document.getElementById('faDepCode').value.trim();
+    const life = parseFloat(document.getElementById('faLife').value) || 10;
+    const cost = parseFloat(document.getElementById('faCost').value.replace(/[.,]/g,'')) || 0;
+    if (!name || !costCode || !depCode || !cost) { toast(t('allFields')); return; }
+    state.faAssets.push({ name, accountCodeCost: parseInt(costCode), accountCodeAccDep: parseInt(depCode), cost, activationDate: state.periodEnd, usefulLifeYears: life, statutoryAnnualDep: cost/life });
+    applyFaScheduleToAje();
+    rebuildEngine();
+    render();
+    toast(t('assetAdded'));
+  };
+  document.querySelectorAll('[data-action="del-fa"]').forEach(el => {
+    el.onclick = () => {
+      const idx = parseInt(el.dataset.idx);
+      state.faAssets.splice(idx, 1);
+      applyFaScheduleToAje();
+      rebuildEngine();
+      render();
+      toast(t('entryDeleted'));
+    };
+  });
+
+  // ETB save
+  const saveEtbBtn = document.querySelector('[data-action="save-etb"]');
+  if (saveEtbBtn) saveEtbBtn.onclick = () => {
+    state.etb.discountRate = parseFloat(document.getElementById('etbDiscount').value) || state.etb.discountRate;
+    state.etb.salaryIncrease = parseFloat(document.getElementById('etbSalary').value) || state.etb.salaryIncrease;
+    state.etb.turnoverRate = parseFloat(document.getElementById('etbTurnover').value) || state.etb.turnoverRate;
+    state.etb.employeeCount = parseInt(document.getElementById('etbEmployees').value) || state.etb.employeeCount;
+    state.etb.dbo = parseFloat(document.getElementById('etbDbo').value.replace(/[.,]/g,'')) || state.etb.dbo;
+    state.etb.currentServiceCost = parseFloat(document.getElementById('etbServiceCost').value.replace(/[.,]/g,'')) || state.etb.currentServiceCost;
+    state.etb.interestCost = parseFloat(document.getElementById('etbInterest').value.replace(/[.,]/g,'')) || state.etb.interestCost;
+    state.etb.oci = parseFloat(document.getElementById('etbOci').value.replace(/[.,]/g,'')) || state.etb.oci;
+    applyEtbToAje();
+    rebuildEngine();
+    render();
+    toast(t('etbSaved'));
+  };
+
+  // Tax rate update
+  const taxBtn = document.querySelector('[data-action="update-tax-rate"]');
+  if (taxBtn) taxBtn.onclick = () => {
+    const v = parseFloat(document.getElementById('taxRateInput').value);
+    if (!isNaN(v)) { state.taxRate = v / 100; rebuildEngine(); render(); toast(t('taxRateUpdated')); }
+  };
+
+  document.querySelectorAll('[data-action="export-info"]').forEach(el => {
+    el.onclick = () => toast(t('exportInfo'));
+  });
+  const pasteBtn = document.querySelector('[data-action="paste-mizan"]');
+  if (pasteBtn) pasteBtn.onclick = () => toast(t('pasteInfo'));
+  const addAccBtn = document.querySelector('[data-action="add-account"]');
+  if (addAccBtn) addAccBtn.onclick = () => toast(t('addAccountInfo'));
+}
+
+loadSession();
+
+// Demo mode: ?demo=1 auto-signs-in with a read-only-feel demo identity, skipping the login screen.
+// This is how the "Check demo" button on the marketing page jumps straight into the real dataset.
+(function checkDemoMode() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === '1' && !currentUser) {
+      currentUser = { name: 'Demo Kullanıcı', company: 'Mutlu Akü A.Ş. (örnek veri)', email: 'demo@tools4finance.com' };
+      state.activeScreen = 'mizan';
+    }
+  } catch (e) {}
+})();
+
+render();
+</script>
+</body>
+</html>
