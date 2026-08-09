@@ -7,6 +7,7 @@ import { useCs } from "@/lib/csContext";
 import { supabase } from "@/lib/supabase";
 import { loadScoringConfig, hasAnyParameters } from "@/lib/csData";
 import { computeScore, ACTION_SIGNAL_PILL, type CustomerRow, type ScoringConfig } from "@/lib/customerScoring";
+import CriterionInput from "@/components/CriterionInput";
 
 const GRADE_COLOR: Record<string, string> = {
   "A+": "var(--green)",
@@ -15,20 +16,11 @@ const GRADE_COLOR: Record<string, string> = {
   C: "var(--coral)",
 };
 
-function emptyInputs(): CustomerRow {
-  return {
-    risk_class: "",
-    overdue_rate: null,
-    overdue_days: null,
-    years_active: null,
-    payment_habit: "",
-    strategic_customer: false,
-  };
-}
-
 // Standalone "what-if" score calculator — mirrors the source spreadsheet's
 // "Tekil Müşteri" sheet: type criteria in, see the score/grade instantly,
-// with no requirement that the customer already exists in CS_customers.
+// with no requirement that the customer already exists in CS_customers. The
+// input fields shown are whatever the user's active criteria actually read
+// from (criteria are fully user-defined, so this can't be a fixed form).
 // Optionally persists the inputs as a new customer row.
 export default function CsScorecardCalculatorPage() {
   const { user } = useCs();
@@ -40,7 +32,7 @@ export default function CsScorecardCalculatorPage() {
   const [config, setConfig] = useState<ScoringConfig | null>(null);
 
   const [name, setName] = useState("");
-  const [inputs, setInputs] = useState<CustomerRow>(emptyInputs());
+  const [inputs, setInputs] = useState<CustomerRow>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -68,7 +60,7 @@ export default function CsScorecardCalculatorPage() {
 
   function handleReset() {
     setName("");
-    setInputs(emptyInputs());
+    setInputs({});
     setSaved(false);
     setSaveError(null);
   }
@@ -116,57 +108,10 @@ export default function CsScorecardCalculatorPage() {
           Müşteri&quot; hesaplayıcısının karşılığı. İsterseniz sonucu yeni bir müşteri kaydı olarak saklayabilirsiniz.
         </p>
 
-        <div className="form-grid" style={{ marginBottom: 18 }}>
-          <label className="auth-field">
-            <span>Ad / Ünvan (kaydetmek için gerekli)</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="opsiyonel — sadece kaydetmek için" />
-          </label>
-          <label className="auth-field">
-            <span>Risk Class</span>
-            <input value={inputs.risk_class ?? ""} onChange={(e) => setInputs({ ...inputs, risk_class: e.target.value })} placeholder="AAA, BBB, MMM…" />
-          </label>
-          <label className="auth-field">
-            <span>Overdue Rate (0-1 arası, örn 0.15)</span>
-            <input
-              type="number"
-              step="any"
-              value={inputs.overdue_rate ?? ""}
-              onChange={(e) => setInputs({ ...inputs, overdue_rate: e.target.value === "" ? null : Number(e.target.value) })}
-            />
-          </label>
-          <label className="auth-field">
-            <span>Overdue Days</span>
-            <input
-              type="number"
-              step="any"
-              value={inputs.overdue_days ?? ""}
-              onChange={(e) => setInputs({ ...inputs, overdue_days: e.target.value === "" ? null : Number(e.target.value) })}
-            />
-          </label>
-          <label className="auth-field">
-            <span>Çalışma Yılı</span>
-            <input
-              type="number"
-              step="any"
-              value={inputs.years_active ?? ""}
-              onChange={(e) => setInputs({ ...inputs, years_active: e.target.value === "" ? null : Number(e.target.value) })}
-            />
-          </label>
-          <label className="auth-field">
-            <span>Payment Habit</span>
-            <input value={inputs.payment_habit ?? ""} onChange={(e) => setInputs({ ...inputs, payment_habit: e.target.value })} placeholder="Good Payer, Neutral, Bad Payer…" />
-          </label>
-          <label className="auth-field">
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input
-                type="checkbox"
-                checked={!!inputs.strategic_customer}
-                onChange={(e) => setInputs({ ...inputs, strategic_customer: e.target.checked })}
-              />
-              Stratejik Müşteri
-            </span>
-          </label>
-        </div>
+        <label className="auth-field" style={{ maxWidth: 320, marginBottom: 18 }}>
+          <span>Ad / Ünvan (kaydetmek için gerekli)</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="opsiyonel — sadece kaydetmek için" />
+        </label>
 
         <div className="table-scroll">
           <table className="data-table">
@@ -174,6 +119,7 @@ export default function CsScorecardCalculatorPage() {
               <tr>
                 <th>Kriter</th>
                 <th>Max</th>
+                <th>Girdi</th>
                 <th>Skor</th>
                 <th className="wrap">Puan Çubuğu</th>
               </tr>
@@ -186,6 +132,13 @@ export default function CsScorecardCalculatorPage() {
                     {!b.active && <span className="pill pill-neutral" style={{ marginLeft: 8 }}>Pasif</span>}
                   </td>
                   <td>{b.max}</td>
+                  <td>
+                    <CriterionInput
+                      field={b.sourceField}
+                      value={inputs[b.sourceField] ?? null}
+                      onChange={(value) => setInputs({ ...inputs, [b.sourceField]: value })}
+                    />
+                  </td>
                   <td>{b.points.toFixed(1)}</td>
                   <td className="wrap">
                     <div style={{ background: "var(--bg2)", borderRadius: 6, height: 10, width: "100%", minWidth: 120, overflow: "hidden" }}>
@@ -202,7 +155,7 @@ export default function CsScorecardCalculatorPage() {
               ))}
               {!result && (
                 <tr>
-                  <td colSpan={4} className="wrap">Parametreler yüklenmediği için skor hesaplanamıyor.</td>
+                  <td colSpan={5} className="wrap">Parametreler yüklenmediği için skor hesaplanamıyor.</td>
                 </tr>
               )}
             </tbody>

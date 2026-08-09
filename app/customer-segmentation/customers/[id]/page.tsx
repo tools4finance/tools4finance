@@ -7,6 +7,7 @@ import { useCs } from "@/lib/csContext";
 import { supabase } from "@/lib/supabase";
 import { loadScoringConfig, hasAnyParameters } from "@/lib/csData";
 import { computeScore, ACTION_SIGNAL_PILL, type CustomerRow, type ScoringConfig } from "@/lib/customerScoring";
+import CriterionInput from "@/components/CriterionInput";
 
 type Customer = CustomerRow & {
   id: string;
@@ -88,6 +89,8 @@ export default function CsCustomerScorecardPage() {
         credit_limit: customer.credit_limit,
         annual_revenue_target: customer.annual_revenue_target,
         strategic_customer: customer.strategic_customer,
+        sum_overdue: customer.sum_overdue,
+        sum_amount_local: customer.sum_amount_local,
       })
       .eq("id", customer.id);
     setSaving(false);
@@ -191,50 +194,11 @@ export default function CsCustomerScorecardPage() {
                   </td>
                   <td>{b.max}</td>
                   <td>
-                    {b.key === "risk_class" && (
-                      <input value={customer.risk_class ?? ""} onChange={(e) => setCustomer({ ...customer, risk_class: e.target.value })} style={{ width: 100 }} />
-                    )}
-                    {b.key === "overdue_rate" && (
-                      <input
-                        type="number"
-                        step="any"
-                        value={customer.overdue_rate ?? ""}
-                        onChange={(e) => setCustomer({ ...customer, overdue_rate: e.target.value === "" ? null : Number(e.target.value) })}
-                        style={{ width: 100 }}
-                      />
-                    )}
-                    {b.key === "overdue_days" && (
-                      <input
-                        type="number"
-                        step="any"
-                        value={customer.overdue_days ?? ""}
-                        onChange={(e) => setCustomer({ ...customer, overdue_days: e.target.value === "" ? null : Number(e.target.value) })}
-                        style={{ width: 100 }}
-                      />
-                    )}
-                    {b.key === "tenure" && (
-                      <input
-                        type="number"
-                        step="any"
-                        value={customer.years_active ?? ""}
-                        onChange={(e) => setCustomer({ ...customer, years_active: e.target.value === "" ? null : Number(e.target.value) })}
-                        style={{ width: 100 }}
-                      />
-                    )}
-                    {b.key === "payment_habit" && (
-                      <input value={customer.payment_habit ?? ""} onChange={(e) => setCustomer({ ...customer, payment_habit: e.target.value })} style={{ width: 130 }} />
-                    )}
-                    {b.key === "strategic" && (
-                      <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <input
-                          type="checkbox"
-                          checked={!!customer.strategic_customer}
-                          onChange={(e) => setCustomer({ ...customer, strategic_customer: e.target.checked })}
-                        />
-                        Yes
-                      </label>
-                    )}
-                    {b.key === "annual_revenue" && <span style={{ color: "var(--text3)" }}>skor dışı</span>}
+                    <CriterionInput
+                      field={b.sourceField}
+                      value={customer[b.sourceField] ?? null}
+                      onChange={(value) => setCustomer({ ...customer, [b.sourceField]: value } as Customer)}
+                    />
                   </td>
                   <td>{b.points.toFixed(1)}</td>
                   <td className="wrap">

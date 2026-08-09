@@ -1,16 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCs } from "@/lib/csContext";
 import { supabase } from "@/lib/supabase";
 import { hasAnyParameters, loadDefaultParameters } from "@/lib/csData";
-import type { CriteriaWeight } from "@/lib/customerScoring";
+import {
+  totalActiveWeight,
+  checkBandIssues,
+  bandRangeLabel,
+  SOURCE_FIELD_OPTIONS,
+  type Criterion,
+  type LookupValue,
+  type Band,
+  type CriterionFormulaType,
+  type CriterionDirection,
+  type CustomerFieldName,
+} from "@/lib/customerScoring";
 
 // ---------------------------------------------------------------------------
-// Generic editable parameter table — every CS_ parameter table (except the
-// two fixed-cardinality ones handled below) follows the same add/edit/delete
-// shape, so one component drives all of them instead of five near-identical
-// copies.
+// Generic editable sub-table — used for both a criterion's lookup values and
+// its bands, and for the (still generic, untouched) grade-thresholds table.
+// insertExtra supplies the FK the table needs beyond its own columns
+// (criterion_id for lookup values/bands, user_id for grade thresholds).
 // ---------------------------------------------------------------------------
 
 type ColumnType = "text" | "number" | "nullableNumber" | "select";
@@ -23,23 +34,21 @@ type ColumnDef<T> = {
 };
 
 function ParamTable<T extends { id: string }>({
-  title,
-  description,
   tableName,
   columns,
   rows,
   setRows,
   newRowTemplate,
-  userId,
+  insertExtra,
+  compact,
 }: {
-  title: string;
-  description: string;
   tableName: string;
   columns: ColumnDef<T>[];
   rows: T[];
   setRows: (rows: T[]) => void;
   newRowTemplate: () => Omit<T, "id">;
-  userId: string;
+  insertExtra: Record<string, unknown>;
+  compact?: boolean;
 }) {
   const [newRow, setNewRow] = useState<Omit<T, "id">>(newRowTemplate());
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -81,7 +90,7 @@ function ParamTable<T extends { id: string }>({
     setError(null);
     const { data, error: insertError } = await supabase
       .from(tableName)
-      .insert({ ...newRow, user_id: userId })
+      .insert({ ...newRow, ...insertExtra })
       .select()
       .single();
     setAdding(false);
@@ -94,12 +103,8 @@ function ParamTable<T extends { id: string }>({
   }
 
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <div className="panel-title">{title}</div>
-      </div>
-      <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14, lineHeight: 1.6 }}>{description}</p>
-      {error && <div className="auth-error" style={{ marginBottom: 12 }}>{error}</div>}
+    <div>
+      {error && <div className="auth-error" style={{ marginBottom: 10 }}>{error}</div>}
       <div className="table-scroll">
         <table className="data-table">
           <thead>
@@ -130,7 +135,7 @@ function ParamTable<T extends { id: string }>({
                         step="any"
                         value={row[col.key] === null || row[col.key] === undefined ? "" : (row[col.key] as string | number)}
                         onChange={(e) => updateCell(row.id, col.key, parseValue(col.type, e.target.value))}
-                        style={{ width: "100%", minWidth: 90 }}
+                        style={{ width: "100%", minWidth: compact ? 70 : 90 }}
                       />
                     )}
                   </td>
@@ -165,7 +170,7 @@ function ParamTable<T extends { id: string }>({
                         placeholder={col.label}
                         value={newRowAsT[col.key] === null || newRowAsT[col.key] === undefined ? "" : (newRowAsT[col.key] as string | number)}
                         onChange={(e) => setNewRow({ ...newRow, [col.key]: parseValue(col.type, e.target.value) } as Omit<T, "id">)}
-                        style={{ width: "100%", minWidth: 90 }}
+                        style={{ width: "100%", minWidth: compact ? 70 : 90 }}
                       />
                     )}
                   </td>
@@ -184,22 +189,23 @@ function ParamTable<T extends { id: string }>({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Row types (mirror the CS_ table columns actually edited on this page)
-// ---------------------------------------------------------------------------
-
-type WeightRow = CriteriaWeight & { id: string };
-type RiskClassRow = { id: string; risk_class: string; points: number; special_rule: string | null; description: string | null };
-type OverdueDaysRow = { id: string; upper_bound_days: number | null; points: number };
-type TenureRow = { id: string; label: string; min_years: number; points: number };
-type HabitRow = { id: string; habit_label: string; points: number };
-type StrategicRow = { id: string; is_strategic: boolean; points: number };
-type GradeRow = { id: string; min_score: number; max_score: number; grade_label: string; action_signal: string; recommended_action: string | null };
-
 const SPECIAL_RULE_OPTIONS = [
   { value: "force_100", label: "force_100 (toplam=100)" },
   { value: "force_0", label: "force_0 (toplam=0)" },
 ];
+
+const FORMULA_TYPE_OPTIONS: { value: CriterionFormulaType; label: string }[] = [
+  { value: "lookup", label: "Lookup (değer eşleştirme)" },
+  { value: "linear", label: "Linear (oransal)" },
+  { value: "band", label: "Band (aralık)" },
+];
+
+const DIRECTION_OPTIONS: { value: CriterionDirection; label: string }[] = [
+  { value: "lower_better", label: "Düşük değer iyi (ör. gecikme oranı)" },
+  { value: "higher_better", label: "Yüksek değer iyi" },
+];
+
+type GradeRow = { id: string; min_score: number; max_score: number; grade_label: string; action_signal: string; recommended_action: string | null };
 
 export default function CsParametersPage() {
   const { user } = useCs();
@@ -208,36 +214,53 @@ export default function CsParametersPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingDefaults, setLoadingDefaults] = useState(false);
 
-  const [weights, setWeights] = useState<WeightRow[]>([]);
-  const [riskRows, setRiskRows] = useState<RiskClassRow[]>([]);
-  const [odRows, setOdRows] = useState<OverdueDaysRow[]>([]);
-  const [tenureRows, setTenureRows] = useState<TenureRow[]>([]);
-  const [habitRows, setHabitRows] = useState<HabitRow[]>([]);
-  const [stratRows, setStratRows] = useState<StrategicRow[]>([]);
+  const [criteria, setCriteria] = useState<Criterion[]>([]);
+  const [lookupByCriterion, setLookupByCriterion] = useState<Record<string, LookupValue[]>>({});
+  const [bandsByCriterion, setBandsByCriterion] = useState<Record<string, Band[]>>({});
   const [gradeRows, setGradeRows] = useState<GradeRow[]>([]);
+
+  const [newLabel, setNewLabel] = useState("");
+  const [newSourceField, setNewSourceField] = useState<CustomerFieldName>("risk_class");
+  const [newFormulaType, setNewFormulaType] = useState<CriterionFormulaType>("lookup");
+  const [newWeight, setNewWeight] = useState(10);
+  const [addingCriterion, setAddingCriterion] = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setError(null);
     try {
-      const [w, r, od, t, h, s, g] = await Promise.all([
-        supabase.from("CS_criteria_weights").select("id, criterion_key, label, weight, active, formula_type").eq("user_id", user.id).order("display_order"),
-        supabase.from("CS_risk_class_scores").select("id, risk_class, points, special_rule, description").eq("user_id", user.id).order("display_order"),
-        supabase.from("CS_overdue_days_bands").select("id, upper_bound_days, points").eq("user_id", user.id).order("display_order"),
-        supabase.from("CS_tenure_bands").select("id, label, min_years, points").eq("user_id", user.id).order("display_order"),
-        supabase.from("CS_payment_habit_scores").select("id, habit_label, points").eq("user_id", user.id).order("display_order"),
-        supabase.from("CS_strategic_scores").select("id, is_strategic, points").eq("user_id", user.id),
+      const criteriaRes = await supabase
+        .from("CS_criteria")
+        .select("id, label, source_field, formula_type, direction, linear_min, linear_max, weight, active, display_order, description")
+        .eq("user_id", user.id)
+        .order("display_order");
+      if (criteriaRes.error) throw criteriaRes.error;
+      const criteriaData = (criteriaRes.data ?? []) as Criterion[];
+      const ids = criteriaData.map((c) => c.id);
+
+      const [lookupRes, bandRes, gradeRes] = await Promise.all([
+        ids.length > 0
+          ? supabase.from("CS_criterion_lookup_values").select("id, criterion_id, match_value, points, special_rule, description, display_order").in("criterion_id", ids).order("display_order")
+          : Promise.resolve({ data: [], error: null }),
+        ids.length > 0
+          ? supabase.from("CS_criterion_bands").select("id, criterion_id, min_value, max_value, points, display_order").in("criterion_id", ids).order("display_order")
+          : Promise.resolve({ data: [], error: null }),
         supabase.from("CS_grade_thresholds").select("id, min_score, max_score, grade_label, action_signal, recommended_action").eq("user_id", user.id).order("display_order"),
       ]);
-      for (const res of [w, r, od, t, h, s, g]) if (res.error) throw res.error;
-      setWeights((w.data ?? []) as WeightRow[]);
-      setRiskRows((r.data ?? []) as RiskClassRow[]);
-      setOdRows((od.data ?? []) as OverdueDaysRow[]);
-      setTenureRows((t.data ?? []) as TenureRow[]);
-      setHabitRows((h.data ?? []) as HabitRow[]);
-      setStratRows((s.data ?? []) as StrategicRow[]);
-      setGradeRows((g.data ?? []) as GradeRow[]);
+      if (lookupRes.error) throw lookupRes.error;
+      if (bandRes.error) throw bandRes.error;
+      if (gradeRes.error) throw gradeRes.error;
+
+      const lookupMap: Record<string, LookupValue[]> = {};
+      for (const row of (lookupRes.data ?? []) as LookupValue[]) (lookupMap[row.criterion_id] ??= []).push(row);
+      const bandMap: Record<string, Band[]> = {};
+      for (const row of (bandRes.data ?? []) as Band[]) (bandMap[row.criterion_id] ??= []).push(row);
+
+      setCriteria(criteriaData);
+      setLookupByCriterion(lookupMap);
+      setBandsByCriterion(bandMap);
+      setGradeRows((gradeRes.data ?? []) as GradeRow[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parametreler yüklenirken hata oluştu.");
     } finally {
@@ -257,7 +280,7 @@ export default function CsParametersPage() {
       const already = await hasAnyParameters(user.id);
       if (already) {
         const confirmed = window.confirm(
-          "Zaten kayıtlı parametreleriniz var. Varsayılan şablonu yüklemek, mevcutların YANINA yeni satırlar ekleyecek (üzerine yazmaz). Devam edilsin mi?"
+          "Zaten kayıtlı kriterleriniz var. Varsayılan şablonu yüklemek, mevcutların YANINA yeni kriterler ekleyecek (üzerine yazmaz). Devam edilsin mi?"
         );
         if (!confirmed) {
           setLoadingDefaults(false);
@@ -273,18 +296,65 @@ export default function CsParametersPage() {
     }
   }
 
-  async function handleSaveWeight(row: WeightRow) {
+  async function handleSaveCriterion(row: Criterion) {
     const { error: updateError } = await supabase
-      .from("CS_criteria_weights")
-      .update({ label: row.label, weight: row.weight, active: row.active })
+      .from("CS_criteria")
+      .update({
+        label: row.label,
+        source_field: row.source_field,
+        formula_type: row.formula_type,
+        direction: row.direction,
+        linear_min: row.linear_min,
+        linear_max: row.linear_max,
+        weight: row.weight,
+        active: row.active,
+      })
       .eq("id", row.id);
     if (updateError) setError(updateError.message);
   }
 
-  async function handleSaveStrategic(row: StrategicRow) {
-    const { error: updateError } = await supabase.from("CS_strategic_scores").update({ points: row.points }).eq("id", row.id);
-    if (updateError) setError(updateError.message);
+  async function handleDeleteCriterion(id: string) {
+    if (!window.confirm("Bu kriter (ve varsa alt tabloları) tamamen silinsin mi?")) return;
+    const { error: deleteError } = await supabase.from("CS_criteria").delete().eq("id", id);
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+    setCriteria(criteria.filter((c) => c.id !== id));
   }
+
+  async function handleAddCriterion() {
+    if (!user || !newLabel.trim()) return;
+    setAddingCriterion(true);
+    setError(null);
+    const { data, error: insertError } = await supabase
+      .from("CS_criteria")
+      .insert({
+        user_id: user.id,
+        label: newLabel.trim(),
+        source_field: newSourceField,
+        formula_type: newFormulaType,
+        direction: newFormulaType === "linear" ? "lower_better" : null,
+        linear_min: newFormulaType === "linear" ? 0 : null,
+        linear_max: newFormulaType === "linear" ? 1 : null,
+        weight: newWeight,
+        active: true,
+        display_order: criteria.length,
+      })
+      .select()
+      .single();
+    setAddingCriterion(false);
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    setCriteria([...criteria, data as Criterion]);
+    setNewLabel("");
+    setNewWeight(10);
+  }
+
+  const activeWeightTotal = useMemo(() => totalActiveWeight(criteria), [criteria]);
+  const weightDiff = 100 - activeWeightTotal;
 
   if (loading || !user) {
     return <div className="empty-state">Yükleniyor…</div>;
@@ -297,9 +367,8 @@ export default function CsParametersPage() {
           <div className="panel-title">Parametre Yönetimi</div>
         </div>
         <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14, lineHeight: 1.6 }}>
-          Aşağıdaki tüm tablolar müşteri risk skoru formülünü besler. Değiştirdiğiniz her değer, hem müşteri
-          listesindeki hem de tekil skor kartındaki hesaplamalara anında yansır — formül sabittir, sadece bu
-          girdiler kullanıcıya özeldir.
+          Kriterleri tamamen siz belirlersiniz: istediğiniz kriteri silin, ağırlığını değiştirin, yenisini ekleyin.
+          Aşağıdaki liste sadece önerilen bir başlangıç şablonudur — hiçbiri koda gömülü/sabit değildir.
         </p>
         {error && <div className="auth-error" style={{ marginBottom: 12 }}>{error}</div>}
         <button className="btn-secondary" onClick={handleLoadDefaults} disabled={loadingDefaults}>
@@ -309,170 +378,242 @@ export default function CsParametersPage() {
 
       <div className="panel">
         <div className="panel-header">
-          <div className="panel-title">Kriter Ağırlıkları &amp; Aktif/Pasif (Tablo 6)</div>
+          <div className="panel-title">Kriterler</div>
+          <span className={`pill ${weightDiff === 0 ? "pill-green" : "pill-amber"}`}>
+            Toplam Ağırlık: {activeWeightTotal} / 100
+            {weightDiff > 0 && ` — Eksik Ağırlık: ${weightDiff} puan eksik`}
+            {weightDiff < 0 && ` — Fazla Ağırlık: ${-weightDiff} puan fazla`}
+          </span>
         </div>
         <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14, lineHeight: 1.6 }}>
-          Her kriterin toplam skora katkısının maksimum puanı ve aktif olup olmadığı. Kriter listesi sabittir
-          (formül bu 7 anahtara göre çalışır); sadece ağırlık, etiket ve aktiflik düzenlenebilir.
+          Aktif kriterlerin ağırlıkları toplamda 100 olmalıdır — bu sadece bir uyarıdır, düzenlemeye devam
+          edebilirsiniz. Her kriterin altında, tipine göre (Lookup/Linear/Band) ilgili alt tablo bulunur.
         </p>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Kriter Anahtarı</th>
-                <th>Etiket</th>
-                <th>Ağırlık (Max Puan)</th>
-                <th>Aktif</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {weights.map((w) => (
-                <tr key={w.id}>
-                  <td><code>{w.criterion_key}</code></td>
-                  <td>
-                    <input
-                      value={w.label}
-                      onChange={(e) => setWeights(weights.map((x) => (x.id === w.id ? { ...x, label: e.target.value } : x)))}
-                      style={{ width: "100%", minWidth: 160 }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      step="any"
-                      value={w.weight}
-                      onChange={(e) => setWeights(weights.map((x) => (x.id === w.id ? { ...x, weight: Number(e.target.value) } : x)))}
-                      style={{ width: 90 }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={w.active}
-                      onChange={(e) => setWeights(weights.map((x) => (x.id === w.id ? { ...x, active: e.target.checked } : x)))}
-                    />
-                  </td>
-                  <td>
-                    <button className="btn-secondary" onClick={() => handleSaveWeight(w)}>Kaydet</button>
-                  </td>
-                </tr>
+
+        <div className="form-grid" style={{ marginBottom: 18 }}>
+          <label className="auth-field">
+            <span>Yeni Kriter Adı</span>
+            <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="örn. Şehir Risk Puanı" />
+          </label>
+          <label className="auth-field">
+            <span>Veri Alanı</span>
+            <select value={newSourceField} onChange={(e) => setNewSourceField(e.target.value as CustomerFieldName)}>
+              {SOURCE_FIELD_OPTIONS.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
               ))}
-            </tbody>
-          </table>
+            </select>
+          </label>
+          <label className="auth-field">
+            <span>Formül Tipi</span>
+            <select value={newFormulaType} onChange={(e) => setNewFormulaType(e.target.value as CriterionFormulaType)}>
+              {FORMULA_TYPE_OPTIONS.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="auth-field">
+            <span>Ağırlık (Max Puan)</span>
+            <input type="number" step="any" value={newWeight} onChange={(e) => setNewWeight(Number(e.target.value))} />
+          </label>
+          <div style={{ display: "flex", alignItems: "flex-end" }}>
+            <button className="btn-primary" onClick={handleAddCriterion} disabled={addingCriterion || !newLabel.trim()}>
+              {addingCriterion ? "Ekleniyor…" : "+ Yeni Kriter Ekle"}
+            </button>
+          </div>
         </div>
+
+        {criteria.length === 0 ? (
+          <div className="empty-state">Henüz kriter yok. Yukarıdan ekleyin ya da varsayılan şablonu yükleyin.</div>
+        ) : (
+          criteria.map((c) => (
+            <CriterionCard
+              key={c.id}
+              criterion={c}
+              setCriterion={(updated) => setCriteria(criteria.map((x) => (x.id === c.id ? updated : x)))}
+              onSave={() => handleSaveCriterion(c)}
+              onDelete={() => handleDeleteCriterion(c.id)}
+              lookupRows={lookupByCriterion[c.id] ?? []}
+              setLookupRows={(rows) => setLookupByCriterion({ ...lookupByCriterion, [c.id]: rows })}
+              bandRows={bandsByCriterion[c.id] ?? []}
+              setBandRows={(rows) => setBandsByCriterion({ ...bandsByCriterion, [c.id]: rows })}
+            />
+          ))
+        )}
       </div>
-
-      <ParamTable<RiskClassRow>
-        title="Risk Class Puanları (Tablo 1)"
-        description="Credit Reform / risk sınıfı koduna karşılık gelen puan. force_100 seçilirse o sınıftaki müşterinin toplam skoru direkt 100, force_0 seçilirse direkt 0 olur (diğer kriterler yok sayılır)."
-        tableName="CS_risk_class_scores"
-        userId={user.id}
-        rows={riskRows}
-        setRows={setRiskRows}
-        columns={[
-          { key: "risk_class", label: "Risk Class", type: "text" },
-          { key: "points", label: "Puan", type: "number" },
-          { key: "special_rule", label: "Özel Kural", type: "select", options: SPECIAL_RULE_OPTIONS },
-          { key: "description", label: "Açıklama", type: "text" },
-        ]}
-        newRowTemplate={() => ({ risk_class: "", points: 0, special_rule: null, description: "", display_order: riskRows.length } as unknown as Omit<RiskClassRow, "id">)}
-      />
-
-      <ParamTable<OverdueDaysRow>
-        title="Overdue Days Puanları (Tablo 3)"
-        description="Vadesi geçmiş gün sayısına göre kademeli puan. Üst Sınır (Gün) boş bırakılırsa o satır açık uçlu (en üst) bant olur."
-        tableName="CS_overdue_days_bands"
-        userId={user.id}
-        rows={odRows}
-        setRows={setOdRows}
-        columns={[
-          { key: "upper_bound_days", label: "Üst Sınır (Gün)", type: "nullableNumber" },
-          { key: "points", label: "Puan", type: "number" },
-        ]}
-        newRowTemplate={() => ({ upper_bound_days: null, points: 0, display_order: odRows.length } as unknown as Omit<OverdueDaysRow, "id">)}
-      />
-
-      <ParamTable<TenureRow>
-        title="Çalışma Yılı Puanları (Tablo 4)"
-        description="Müşteri ile çalışılan yıl sayısına göre kademeli puan. En yüksek 'Min Yıl' değeri, müşterinin gerçek yılından küçük veya eşit olan bant kazanır."
-        tableName="CS_tenure_bands"
-        userId={user.id}
-        rows={tenureRows}
-        setRows={setTenureRows}
-        columns={[
-          { key: "label", label: "Etiket", type: "text" },
-          { key: "min_years", label: "Min Yıl", type: "number" },
-          { key: "points", label: "Puan", type: "number" },
-        ]}
-        newRowTemplate={() => ({ label: "", min_years: 0, points: 0, display_order: tenureRows.length } as unknown as Omit<TenureRow, "id">)}
-      />
-
-      <ParamTable<HabitRow>
-        title="Payment Habit Puanları (Tablo 4)"
-        description="Ödeme alışkanlığı etiketine karşılık gelen puan. Müşteri kaydındaki Payment Habit değeri burada eşleşen satırla puanlanır (büyük/küçük harf duyarsız)."
-        tableName="CS_payment_habit_scores"
-        userId={user.id}
-        rows={habitRows}
-        setRows={setHabitRows}
-        columns={[
-          { key: "habit_label", label: "Habit Etiketi", type: "text" },
-          { key: "points", label: "Puan", type: "number" },
-        ]}
-        newRowTemplate={() => ({ habit_label: "", points: 0, display_order: habitRows.length } as unknown as Omit<HabitRow, "id">)}
-      />
 
       <div className="panel">
         <div className="panel-header">
-          <div className="panel-title">Stratejik Müşteri Puanları (Tablo 4)</div>
+          <div className="panel-title">Skor Notu &amp; Aksiyon Sinyali Eşikleri</div>
         </div>
         <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14, lineHeight: 1.6 }}>
-          Stratejik müşteri işaretli olan/olmayan kayıtlar için sabit puan.
+          Toplam skorun hangi aralıkta hangi nota (A+/A/B/C) ve aksiyon sinyaline (Green/Yellow/Red) karşılık geldiği.
         </p>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr><th>Stratejik mi?</th><th>Puan</th><th></th></tr>
-            </thead>
-            <tbody>
-              {stratRows.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.is_strategic ? "Yes" : "No"}</td>
-                  <td>
-                    <input
-                      type="number"
-                      step="any"
-                      value={s.points}
-                      onChange={(e) => setStratRows(stratRows.map((x) => (x.id === s.id ? { ...x, points: Number(e.target.value) } : x)))}
-                      style={{ width: 90 }}
-                    />
-                  </td>
-                  <td>
-                    <button className="btn-secondary" onClick={() => handleSaveStrategic(s)}>Kaydet</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <ParamTable<GradeRow>
+          tableName="CS_grade_thresholds"
+          insertExtra={{ user_id: user.id, display_order: gradeRows.length }}
+          rows={gradeRows}
+          setRows={setGradeRows}
+          columns={[
+            { key: "min_score", label: "Alt Limit", type: "number" },
+            { key: "max_score", label: "Üst Limit", type: "number" },
+            { key: "grade_label", label: "Not", type: "text" },
+            { key: "action_signal", label: "Aksiyon Sinyali", type: "text" },
+            { key: "recommended_action", label: "Tavsiye Edilen Aksiyon", type: "text" },
+          ]}
+          newRowTemplate={() => ({ min_score: 0, max_score: 0, grade_label: "", action_signal: "", recommended_action: "" })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CriterionCard({
+  criterion,
+  setCriterion,
+  onSave,
+  onDelete,
+  lookupRows,
+  setLookupRows,
+  bandRows,
+  setBandRows,
+}: {
+  criterion: Criterion;
+  setCriterion: (c: Criterion) => void;
+  onSave: () => void;
+  onDelete: () => void;
+  lookupRows: LookupValue[];
+  setLookupRows: (rows: LookupValue[]) => void;
+  bandRows: Band[];
+  setBandRows: (rows: Band[]) => void;
+}) {
+  const bandIssues = useMemo(() => checkBandIssues(bandRows), [bandRows]);
+  const sortedBands = useMemo(() => [...bandRows].sort((a, b) => a.min_value - b.min_value), [bandRows]);
+
+  return (
+    <div style={{ border: "0.5px solid var(--border-strong)", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+      <div className="form-grid" style={{ marginBottom: 10 }}>
+        <label className="auth-field">
+          <span>Etiket</span>
+          <input value={criterion.label} onChange={(e) => setCriterion({ ...criterion, label: e.target.value })} />
+        </label>
+        <label className="auth-field">
+          <span>Veri Alanı</span>
+          <select value={criterion.source_field} onChange={(e) => setCriterion({ ...criterion, source_field: e.target.value as CustomerFieldName })}>
+            {SOURCE_FIELD_OPTIONS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="auth-field">
+          <span>Formül Tipi</span>
+          <select value={criterion.formula_type} onChange={(e) => setCriterion({ ...criterion, formula_type: e.target.value as CriterionFormulaType })}>
+            {FORMULA_TYPE_OPTIONS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="auth-field">
+          <span>Ağırlık (Max Puan)</span>
+          <input type="number" step="any" value={criterion.weight} onChange={(e) => setCriterion({ ...criterion, weight: Number(e.target.value) })} />
+        </label>
+        <label className="auth-field">
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input type="checkbox" checked={criterion.active} onChange={(e) => setCriterion({ ...criterion, active: e.target.checked })} />
+            Aktif
+          </span>
+        </label>
+        {criterion.formula_type === "linear" && (
+          <>
+            <label className="auth-field">
+              <span>Yön</span>
+              <select value={criterion.direction ?? "lower_better"} onChange={(e) => setCriterion({ ...criterion, direction: e.target.value as CriterionDirection })}>
+                {DIRECTION_OPTIONS.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="auth-field">
+              <span>Min Değer (0 puan)</span>
+              <input type="number" step="any" value={criterion.linear_min ?? 0} onChange={(e) => setCriterion({ ...criterion, linear_min: Number(e.target.value) })} />
+            </label>
+            <label className="auth-field">
+              <span>Max Değer (tam puan)</span>
+              <input type="number" step="any" value={criterion.linear_max ?? 1} onChange={(e) => setCriterion({ ...criterion, linear_max: Number(e.target.value) })} />
+            </label>
+          </>
+        )}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+          <button className="btn-secondary" onClick={onSave}>Kaydet</button>
+          <button className="btn-danger" onClick={onDelete}>Kriteri Sil</button>
         </div>
       </div>
 
-      <ParamTable<GradeRow>
-        title="Skor Notu &amp; Aksiyon Sinyali Eşikleri (Tablo 5)"
-        description="Toplam skorun hangi aralıkta hangi nota (A+/A/B/C) ve aksiyon sinyaline (Green/Yellow/Red) karşılık geldiği."
-        tableName="CS_grade_thresholds"
-        userId={user.id}
-        rows={gradeRows}
-        setRows={setGradeRows}
-        columns={[
-          { key: "min_score", label: "Alt Limit", type: "number" },
-          { key: "max_score", label: "Üst Limit", type: "number" },
-          { key: "grade_label", label: "Not", type: "text" },
-          { key: "action_signal", label: "Aksiyon Sinyali", type: "text" },
-          { key: "recommended_action", label: "Tavsiye Edilen Aksiyon", type: "text" },
-        ]}
-        newRowTemplate={() => ({ min_score: 0, max_score: 0, grade_label: "", action_signal: "", recommended_action: "", display_order: gradeRows.length } as unknown as Omit<GradeRow, "id">)}
-      />
+      {criterion.formula_type === "lookup" && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8 }}>
+            Değer Eşleştirme Tablosu — müşterinin bu alandaki değeri burada eşleşen satırla puanlanır (büyük/küçük harf duyarsız).
+          </div>
+          <ParamTable<LookupValue>
+            tableName="CS_criterion_lookup_values"
+            insertExtra={{ criterion_id: criterion.id, display_order: lookupRows.length }}
+            rows={lookupRows}
+            setRows={setLookupRows}
+            compact
+            columns={[
+              { key: "match_value", label: "Değer", type: "text" },
+              { key: "points", label: "Puan", type: "number" },
+              { key: "special_rule", label: "Özel Kural", type: "select", options: SPECIAL_RULE_OPTIONS },
+              { key: "description", label: "Açıklama", type: "text" },
+            ]}
+            newRowTemplate={() => ({ criterion_id: criterion.id, match_value: "", points: 0, special_rule: null, description: "", display_order: lookupRows.length })}
+          />
+        </div>
+      )}
+
+      {criterion.formula_type === "band" && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8 }}>
+            Aralık Tablosu — değerler her iki sınır da dahil olacak şekilde eşleşir (örn. 1 – 4 aralığı 1, 2, 3, 4 değerlerini kapsar).
+            Üst sınır boş bırakılırsa aralık sınırsız (açık uçlu) olur.
+          </div>
+          {bandIssues.length > 0 && (
+            <div className="auth-error" style={{ marginBottom: 8 }}>
+              {bandIssues.map((issue, i) => (
+                <div key={i}>{issue.type === "overlap" ? "⚠ Çakışma: " : "ℹ Boşluk: "}{issue.message}</div>
+              ))}
+            </div>
+          )}
+          <div className="table-scroll" style={{ marginBottom: 8 }}>
+            <table className="data-table">
+              <thead><tr><th>Aralık</th><th>Puan</th></tr></thead>
+              <tbody>
+                {sortedBands.map((b) => (
+                  <tr key={b.id}><td>{bandRangeLabel(b)}</td><td>{b.points}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ParamTable<Band>
+            tableName="CS_criterion_bands"
+            insertExtra={{ criterion_id: criterion.id, display_order: bandRows.length }}
+            rows={bandRows}
+            setRows={setBandRows}
+            compact
+            columns={[
+              { key: "min_value", label: "Alt Sınır", type: "number" },
+              { key: "max_value", label: "Üst Sınır (boş=sınırsız)", type: "nullableNumber" },
+              { key: "points", label: "Puan", type: "number" },
+            ]}
+            newRowTemplate={() => ({ criterion_id: criterion.id, min_value: 0, max_value: null, points: 0, display_order: bandRows.length })}
+          />
+        </div>
+      )}
+
+      {criterion.formula_type === "linear" && (
+        <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 8 }}>
+          Puan = Ağırlık × normalize edilmiş değer (Min–Max arasında 0–1&apos;e ölçeklenir, Yön&apos;e göre ters çevrilir).
+        </div>
+      )}
     </div>
   );
 }

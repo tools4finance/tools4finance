@@ -1,41 +1,109 @@
 // Shared Customer Segmentation scoring engine.
 //
-// This is a faithful port of the site owner's existing Excel model
-// ("Parametrik Risk Skoru Modeli") — every page that computes or displays a
-// customer's score (the list, the scorecard) MUST import and use these
+// Every page that computes or displays a customer's score (the list, the
+// scorecard, the standalone calculator) MUST import and use these
 // functions rather than reimplementing the formula, so the numbers are
-// guaranteed to match everywhere. The formula itself is fixed; everything
-// it reads (weights, bands, thresholds) is 100% user-editable data coming
-// from the CS_* parameter tables.
+// guaranteed to match everywhere.
+//
+// Unlike the first version of this module, NOTHING here is hardcoded to a
+// fixed set of criteria — a criterion is just a row a user creates, pointing
+// at one of the fields below, with a formula_type that says how to turn that
+// field's raw value into points. The "Risk Class / Overdue Rate / Overdue
+// Days / Tenure / Payment Habit / Strategic" set is only a suggested
+// starting template (DEFAULT_CRITERIA_TEMPLATE) — fully deletable, editable,
+// extensible, like every other criterion a user might add.
+//
+// This mirrors the standard points-based credit-scorecard pattern (WoE /
+// FICO-style: bin a numeric field into ranges, each bin worth N points; look
+// up a categorical field's value against a point table; sum weighted
+// contributions) and the rules-based lead-scoring pattern used by CRM tools
+// (HubSpot/Zoho-style: one point-value per attribute rule, independently
+// configurable) — both use exactly this lookup/linear/band-per-criterion,
+// weighted-sum shape.
 
-export type CustomerRow = {
-  risk_class: string | null;
-  overdue_rate: number | null; // fraction 0..1
-  overdue_days: number | null;
-  years_active: number | null;
-  payment_habit: string | null;
-  strategic_customer: boolean | null;
-};
+export type CustomerFieldName =
+  | "risk_class"
+  | "overdue_rate"
+  | "overdue_days"
+  | "dso"
+  | "sales_term"
+  | "years_active"
+  | "payment_habit"
+  | "credit_limit"
+  | "annual_revenue_target"
+  | "strategic_customer"
+  | "city"
+  | "sum_overdue"
+  | "sum_amount_local";
 
-export type CriteriaWeight = {
-  criterion_key: "risk_class" | "overdue_rate" | "overdue_days" | "tenure" | "payment_habit" | "strategic" | "annual_revenue";
+export type FieldKind = "text" | "number" | "fraction" | "boolean";
+
+export const SOURCE_FIELD_OPTIONS: { value: CustomerFieldName; label: string; kind: FieldKind }[] = [
+  { value: "risk_class", label: "Risk Class", kind: "text" },
+  { value: "overdue_rate", label: "Overdue Rate (oran, 0-1 arası)", kind: "fraction" },
+  { value: "overdue_days", label: "Overdue Days (gün)", kind: "number" },
+  { value: "dso", label: "DSO (gün)", kind: "number" },
+  { value: "sales_term", label: "Sales Term (gün)", kind: "number" },
+  { value: "years_active", label: "Çalışma Yılı", kind: "number" },
+  { value: "payment_habit", label: "Payment Habit", kind: "text" },
+  { value: "credit_limit", label: "Kredi Limiti", kind: "number" },
+  { value: "annual_revenue_target", label: "Yıllık Ciro Hedefi", kind: "number" },
+  { value: "strategic_customer", label: "Stratejik Müşteri (Evet/Hayır)", kind: "boolean" },
+  { value: "city", label: "Şehir", kind: "text" },
+  { value: "sum_overdue", label: "Toplam Vadesi Geçmiş Tutar", kind: "number" },
+  { value: "sum_amount_local", label: "Toplam Tutar", kind: "number" },
+];
+
+const SOURCE_FIELD_KIND: Record<CustomerFieldName, FieldKind> = Object.fromEntries(
+  SOURCE_FIELD_OPTIONS.map((f) => [f.value, f.kind])
+) as Record<CustomerFieldName, FieldKind>;
+
+export function fieldKind(field: CustomerFieldName): FieldKind {
+  return SOURCE_FIELD_KIND[field];
+}
+
+export function fieldLabel(field: CustomerFieldName): string {
+  return SOURCE_FIELD_OPTIONS.find((f) => f.value === field)?.label ?? field;
+}
+
+export type CustomerRow = Partial<Record<CustomerFieldName, string | number | boolean | null>>;
+
+export type CriterionFormulaType = "lookup" | "linear" | "band";
+export type CriterionDirection = "higher_better" | "lower_better";
+
+export type Criterion = {
+  id: string;
   label: string;
+  source_field: CustomerFieldName;
+  formula_type: CriterionFormulaType;
+  direction: CriterionDirection | null; // only meaningful for 'linear'
+  linear_min: number | null; // only meaningful for 'linear'
+  linear_max: number | null; // only meaningful for 'linear'
   weight: number;
   active: boolean;
-  formula_type: "lookup" | "linear" | "band" | "excluded";
+  display_order: number;
+  description: string | null;
 };
 
-export type RiskClassScore = {
-  risk_class: string;
+export type LookupValue = {
+  id: string;
+  criterion_id: string;
+  match_value: string;
   points: number;
   special_rule: "force_100" | "force_0" | null;
-  active: boolean;
+  description: string | null;
+  display_order: number;
 };
 
-export type OverdueDaysBand = { upper_bound_days: number | null; points: number };
-export type TenureBand = { label: string; min_years: number; points: number };
-export type PaymentHabitScore = { habit_label: string; points: number };
-export type StrategicScore = { is_strategic: boolean; points: number };
+export type Band = {
+  id: string;
+  criterion_id: string;
+  min_value: number;
+  max_value: number | null; // null = open-ended
+  points: number;
+  display_order: number;
+};
+
 export type GradeThreshold = {
   min_score: number;
   max_score: number;
@@ -45,18 +113,16 @@ export type GradeThreshold = {
 };
 
 export type ScoringConfig = {
-  weights: CriteriaWeight[];
-  riskClassScores: RiskClassScore[];
-  overdueDaysBands: OverdueDaysBand[]; // must be pre-sorted ascending by upper_bound_days (nulls last)
-  tenureBands: TenureBand[]; // must be pre-sorted descending by min_years (so first match wins)
-  paymentHabitScores: PaymentHabitScore[];
-  strategicScores: StrategicScore[];
+  criteria: Criterion[];
+  lookupValues: Record<string, LookupValue[]>; // keyed by criterion_id
+  bands: Record<string, Band[]>; // keyed by criterion_id
   gradeThresholds: GradeThreshold[];
 };
 
 export type CriterionBreakdown = {
-  key: CriteriaWeight["criterion_key"];
+  key: string; // criterion id
   label: string;
+  sourceField: CustomerFieldName;
   max: number;
   inputDisplay: string;
   points: number;
@@ -72,134 +138,73 @@ export type ScoreResult = {
   recommendedAction: string | null;
 };
 
-function weightFor(config: ScoringConfig, key: CriteriaWeight["criterion_key"]): CriteriaWeight | undefined {
-  return config.weights.find((w) => w.criterion_key === key);
-}
-
-// Riskclass/payment-habit lookups are case/whitespace tolerant since this
-// data is often pasted in from Excel with inconsistent casing.
+// Lookup/text matching is case/whitespace tolerant since this data is often
+// pasted in from Excel with inconsistent casing.
 function norm(s: string | null | undefined): string {
   return (s ?? "").trim().toLocaleLowerCase("tr");
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function rawToString(raw: CustomerRow[CustomerFieldName]): string {
+  if (raw === null || raw === undefined) return "";
+  if (typeof raw === "boolean") return raw ? "true" : "false";
+  return String(raw);
+}
+
+function rawToNumber(raw: CustomerRow[CustomerFieldName]): number {
+  const n = Number(raw ?? 0);
+  return isFinite(n) ? n : 0;
+}
+
+function formatInput(field: CustomerFieldName, raw: CustomerRow[CustomerFieldName]): string {
+  const kind = fieldKind(field);
+  if (raw === null || raw === undefined || raw === "") return "—";
+  if (kind === "boolean") return raw ? "Yes" : "No";
+  if (kind === "fraction") return `${(rawToNumber(raw) * 100).toFixed(1)}%`;
+  return String(raw);
 }
 
 export function computeScore(customer: CustomerRow, config: ScoringConfig): ScoreResult {
   const breakdown: CriterionBreakdown[] = [];
   let forced: "force_100" | "force_0" | null = null;
 
-  // --- Risk Class (lookup, may force the whole total) ---
-  const riskW = weightFor(config, "risk_class");
-  if (riskW) {
-    const match = config.riskClassScores.find((r) => norm(r.risk_class) === norm(customer.risk_class));
-    const points = riskW.active ? match?.points ?? 0 : 0;
-    if (riskW.active && match?.special_rule) forced = match.special_rule;
-    breakdown.push({
-      key: "risk_class",
-      label: riskW.label,
-      max: riskW.weight,
-      inputDisplay: customer.risk_class ?? "—",
-      points,
-      active: riskW.active,
-    });
-  }
+  const sortedCriteria = [...config.criteria].sort((a, b) => a.display_order - b.display_order);
 
-  // --- Overdue Rate (linear: weight * (1 - rate), clamped) ---
-  const odRateW = weightFor(config, "overdue_rate");
-  if (odRateW) {
-    const rate = customer.overdue_rate ?? 0;
-    const raw = odRateW.weight * (1 - rate);
-    const points = odRateW.active ? Math.max(0, Math.min(odRateW.weight, raw)) : 0;
-    breakdown.push({
-      key: "overdue_rate",
-      label: odRateW.label,
-      max: odRateW.weight,
-      inputDisplay: `${(rate * 100).toFixed(1)}%`,
-      points,
-      active: odRateW.active,
-    });
-  }
+  for (const criterion of sortedCriteria) {
+    const raw = customer[criterion.source_field];
+    let points = 0;
 
-  // --- Overdue Days (band lookup) ---
-  const odDaysW = weightFor(config, "overdue_days");
-  if (odDaysW) {
-    const days = customer.overdue_days ?? 0;
-    const sorted = [...config.overdueDaysBands].sort((a, b) => {
-      if (a.upper_bound_days === null) return 1;
-      if (b.upper_bound_days === null) return -1;
-      return a.upper_bound_days - b.upper_bound_days;
-    });
-    const band = sorted.find((b) => b.upper_bound_days === null || days <= b.upper_bound_days);
-    const points = odDaysW.active ? band?.points ?? 0 : 0;
-    breakdown.push({
-      key: "overdue_days",
-      label: odDaysW.label,
-      max: odDaysW.weight,
-      inputDisplay: `${days} gün`,
-      points,
-      active: odDaysW.active,
-    });
-  }
+    if (criterion.formula_type === "lookup") {
+      const values = config.lookupValues[criterion.id] ?? [];
+      const match = values.find((v) => norm(v.match_value) === norm(rawToString(raw)));
+      points = criterion.active ? match?.points ?? 0 : 0;
+      if (criterion.active && match?.special_rule) forced = match.special_rule;
+    } else if (criterion.formula_type === "linear") {
+      const value = rawToNumber(raw);
+      const min = criterion.linear_min ?? 0;
+      const max = criterion.linear_max ?? 1;
+      const range = max - min || 1;
+      const normalized = clamp((value - min) / range, 0, 1);
+      const directional = criterion.direction === "higher_better" ? normalized : 1 - normalized;
+      points = criterion.active ? criterion.weight * directional : 0;
+    } else if (criterion.formula_type === "band") {
+      const value = rawToNumber(raw);
+      const bands = config.bands[criterion.id] ?? [];
+      const band = bands.find((b) => value >= b.min_value && (b.max_value === null || value <= b.max_value));
+      points = criterion.active ? band?.points ?? 0 : 0;
+    }
 
-  // --- Tenure / Çalışma Yılı (band lookup, highest min_years <= years wins) ---
-  const tenureW = weightFor(config, "tenure");
-  if (tenureW) {
-    const years = customer.years_active ?? 0;
-    const sorted = [...config.tenureBands].sort((a, b) => b.min_years - a.min_years);
-    const band = sorted.find((b) => years >= b.min_years);
-    const points = tenureW.active ? band?.points ?? 0 : 0;
     breakdown.push({
-      key: "tenure",
-      label: tenureW.label,
-      max: tenureW.weight,
-      inputDisplay: `${years} yıl`,
+      key: criterion.id,
+      label: criterion.label,
+      sourceField: criterion.source_field,
+      max: criterion.weight,
+      inputDisplay: formatInput(criterion.source_field, raw),
       points,
-      active: tenureW.active,
-    });
-  }
-
-  // --- Payment Habit (lookup) ---
-  const habitW = weightFor(config, "payment_habit");
-  if (habitW) {
-    const match = config.paymentHabitScores.find((h) => norm(h.habit_label) === norm(customer.payment_habit));
-    const points = habitW.active ? match?.points ?? 0 : 0;
-    breakdown.push({
-      key: "payment_habit",
-      label: habitW.label,
-      max: habitW.weight,
-      inputDisplay: customer.payment_habit ?? "—",
-      points,
-      active: habitW.active,
-    });
-  }
-
-  // --- Strategic customer (lookup) ---
-  const stratW = weightFor(config, "strategic");
-  if (stratW) {
-    const isStrategic = !!customer.strategic_customer;
-    const match = config.strategicScores.find((s) => s.is_strategic === isStrategic);
-    const points = stratW.active ? match?.points ?? 0 : 0;
-    breakdown.push({
-      key: "strategic",
-      label: stratW.label,
-      max: stratW.weight,
-      inputDisplay: isStrategic ? "Yes" : "No",
-      points,
-      active: stratW.active,
-    });
-  }
-
-  // annual_revenue is deliberately excluded from scoring (matches the
-  // spreadsheet's own "Ciro skoru devre dışıdır" note) — still shown in the
-  // breakdown if the weight row exists and is active, but formula_type
-  // 'excluded' means it never contributes points regardless.
-  const revenueW = weightFor(config, "annual_revenue");
-  if (revenueW && revenueW.formula_type !== "excluded" && revenueW.active) {
-    breakdown.push({
-      key: "annual_revenue",
-      label: revenueW.label,
-      max: revenueW.weight,
-      inputDisplay: "—",
-      points: 0,
-      active: revenueW.active,
+      active: criterion.active,
     });
   }
 
@@ -218,63 +223,173 @@ export function computeScore(customer: CustomerRow, config: ScoringConfig): Scor
   };
 }
 
+// Sum of active criteria weights — surfaced in the parameters UI as a
+// non-blocking "Eksik/Fazla Ağırlık" warning badge when it isn't exactly 100.
+export function totalActiveWeight(criteria: Pick<Criterion, "weight" | "active">[]): number {
+  return criteria.filter((c) => c.active).reduce((s, c) => s + c.weight, 0);
+}
+
+// Overlap/gap checker for a single criterion's bands, sorted by min_value —
+// used by the parameters UI so ambiguous band ranges (the original product
+// complaint) are caught before they silently mis-score a customer.
+export type BandIssue = { type: "overlap" | "gap"; message: string };
+
+export function checkBandIssues(bands: Pick<Band, "min_value" | "max_value">[]): BandIssue[] {
+  const sorted = [...bands].sort((a, b) => a.min_value - b.min_value);
+  const issues: BandIssue[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const cur = sorted[i];
+    const next = sorted[i + 1];
+    if (cur.max_value === null) continue; // open-ended band swallows everything after it; nothing to compare
+    if (next.min_value <= cur.max_value) {
+      issues.push({ type: "overlap", message: `${cur.min_value}–${cur.max_value} ile ${next.min_value}–${next.max_value ?? "∞"} aralıkları çakışıyor.` });
+    } else if (next.min_value > cur.max_value + 0.000001) {
+      issues.push({ type: "gap", message: `${cur.max_value} ile ${next.min_value} arasında boşluk var — bu aralığa düşen değerler 0 puan alır.` });
+    }
+  }
+  return issues;
+}
+
+export function bandRangeLabel(band: Pick<Band, "min_value" | "max_value">): string {
+  return band.max_value === null ? `${band.min_value}+` : `${band.min_value} – ${band.max_value}`;
+}
+
 // ----------------------------------------------------------------------------
-// Default parameter template — exact values from the source spreadsheet's
-// "Parametreler" sheet (Tablo 1-6). Used both to seed the demo account and
-// to power the "Varsayılan Parametreleri Yükle" (load defaults) action any
-// user can trigger to start from a sensible template instead of a blank
-// slate.
+// Default parameter template — a *suggested* starting point (same 6 criteria
+// conceptually as the site owner's original Excel model), not a fixed/locked
+// structure. Every field here is exactly as user-editable/deletable as any
+// criterion a user adds themselves; nothing in the engine above knows or
+// cares that "Risk Class" happens to be one of these. Used both to power the
+// "Varsayılan Parametreleri Yükle" action and to seed the demo account.
 // ----------------------------------------------------------------------------
 
-export const DEFAULT_CRITERIA_WEIGHTS: Omit<CriteriaWeight, "">[] & { description: string; display_order: number }[] = [
-  { criterion_key: "risk_class", label: "Risk Class (Credit Reform)", weight: 25, active: true, formula_type: "lookup", description: "Risk Class (AAA/BBB/CCC/DDD) puanı.", display_order: 0 },
-  { criterion_key: "overdue_rate", label: "Overdue Rate", weight: 25, active: true, formula_type: "linear", description: "Vadesi geçmiş oran. Lineer: Puan = Ağırlık × (1 − OD Rate)", display_order: 1 },
-  { criterion_key: "overdue_days", label: "Overdue Days", weight: 30, active: true, formula_type: "band", description: "Vadesi geçmiş gün (DSO − Sales Term). Eşik tablosundan okunur.", display_order: 2 },
-  { criterion_key: "tenure", label: "Çalışma Yılı", weight: 5, active: true, formula_type: "band", description: "Çalışma yılı kademeli puan.", display_order: 3 },
-  { criterion_key: "payment_habit", label: "Payment Habit", weight: 10, active: true, formula_type: "lookup", description: "Ödeme alışkanlığı.", display_order: 4 },
-  { criterion_key: "strategic", label: "Stratejik Müşteri", weight: 5, active: true, formula_type: "lookup", description: "Stratejik müşteri. Yes=ağırlık, No=0.", display_order: 5 },
-  { criterion_key: "annual_revenue", label: "Yıllık Ciro", weight: 0, active: false, formula_type: "excluded", description: "Skor dışı bırakıldı; formülde kullanılmaz.", display_order: 6 },
-] as unknown as (Omit<CriteriaWeight, "">[] & { description: string; display_order: number }[]);
+export type DefaultCriterionTemplate = {
+  criterion: Omit<Criterion, "id">;
+  lookupValues?: Omit<LookupValue, "id" | "criterion_id">[];
+  bands?: Omit<Band, "id" | "criterion_id">[];
+};
 
-export const DEFAULT_RISK_CLASS_SCORES = [
-  { risk_class: "MMM", points: 25, special_rule: "force_100" as const, description: "Major müşteri — direkt 100 puan", display_order: 0 },
-  { risk_class: "GGG", points: 25, special_rule: "force_100" as const, description: "Kamu müşterisi — direkt 100 puan", display_order: 1 },
-  { risk_class: "AAA", points: 25, special_rule: null, description: "En iyi CR notu (100-175)", display_order: 2 },
-  { risk_class: "BBB", points: 20, special_rule: null, description: "İyi CR notu (176-275)", display_order: 3 },
-  { risk_class: "CCC", points: 10, special_rule: null, description: "Orta CR notu (276-325)", display_order: 4 },
-  { risk_class: "DDD", points: 5, special_rule: null, description: "Riskli CR notu (326-600)", display_order: 5 },
-  { risk_class: "SSS", points: 0, special_rule: "force_0" as const, description: "Limit gelmedi — sıfır puan", display_order: 6 },
-  { risk_class: "NNB", points: 0, special_rule: "force_0" as const, description: "Yeni müşteri — sıfır puan", display_order: 7 },
-  { risk_class: "LLL", points: 0, special_rule: "force_0" as const, description: "Yasal takip — sıfır puan", display_order: 8 },
-  { risk_class: "NNN", points: 0, special_rule: "force_0" as const, description: "Uzun aradan dönen — sıfır puan", display_order: 9 },
+export const DEFAULT_CRITERIA_TEMPLATE: DefaultCriterionTemplate[] = [
+  {
+    criterion: {
+      label: "Risk Class (Credit Reform)",
+      source_field: "risk_class",
+      formula_type: "lookup",
+      direction: null,
+      linear_min: null,
+      linear_max: null,
+      weight: 25,
+      active: true,
+      display_order: 0,
+      description: "Risk Class (AAA/BBB/CCC/DDD…) puanı. Örnek bir kriterdir — tamamen silinebilir.",
+    },
+    lookupValues: [
+      { match_value: "MMM", points: 25, special_rule: "force_100", description: "Major müşteri — direkt 100 puan", display_order: 0 },
+      { match_value: "GGG", points: 25, special_rule: "force_100", description: "Kamu müşterisi — direkt 100 puan", display_order: 1 },
+      { match_value: "AAA", points: 25, special_rule: null, description: "En iyi CR notu (100-175)", display_order: 2 },
+      { match_value: "BBB", points: 20, special_rule: null, description: "İyi CR notu (176-275)", display_order: 3 },
+      { match_value: "CCC", points: 10, special_rule: null, description: "Orta CR notu (276-325)", display_order: 4 },
+      { match_value: "DDD", points: 5, special_rule: null, description: "Riskli CR notu (326-600)", display_order: 5 },
+      { match_value: "SSS", points: 0, special_rule: "force_0", description: "Limit gelmedi — sıfır puan", display_order: 6 },
+      { match_value: "NNB", points: 0, special_rule: "force_0", description: "Yeni müşteri — sıfır puan", display_order: 7 },
+      { match_value: "LLL", points: 0, special_rule: "force_0", description: "Yasal takip — sıfır puan", display_order: 8 },
+      { match_value: "NNN", points: 0, special_rule: "force_0", description: "Uzun aradan dönen — sıfır puan", display_order: 9 },
+    ],
+  },
+  {
+    criterion: {
+      label: "Overdue Rate",
+      source_field: "overdue_rate",
+      formula_type: "linear",
+      direction: "lower_better",
+      linear_min: 0,
+      linear_max: 1,
+      weight: 25,
+      active: true,
+      display_order: 1,
+      description: "Vadesi geçmiş oran. Lineer: Puan = Ağırlık × (1 − oran).",
+    },
+  },
+  {
+    criterion: {
+      label: "Overdue Days",
+      source_field: "overdue_days",
+      formula_type: "band",
+      direction: null,
+      linear_min: null,
+      linear_max: null,
+      weight: 30,
+      active: true,
+      display_order: 2,
+      description: "Vadesi geçmiş gün sayısı (DSO − Sales Term). Aralık tablosundan okunur.",
+    },
+    bands: [
+      { min_value: 0, max_value: 7, points: 30, display_order: 0 },
+      { min_value: 8, max_value: 30, points: 15, display_order: 1 },
+      { min_value: 31, max_value: 60, points: 7, display_order: 2 },
+      { min_value: 61, max_value: 90, points: 0, display_order: 3 },
+      { min_value: 91, max_value: null, points: 0, display_order: 4 },
+    ],
+  },
+  {
+    criterion: {
+      label: "Çalışma Yılı",
+      source_field: "years_active",
+      formula_type: "band",
+      direction: null,
+      linear_min: null,
+      linear_max: null,
+      weight: 5,
+      active: true,
+      display_order: 3,
+      description: "Müşteri ile çalışılan yıl sayısına göre kademeli puan.",
+    },
+    bands: [
+      { min_value: 1, max_value: 4, points: 1, display_order: 0 },
+      { min_value: 5, max_value: 9, points: 3, display_order: 1 },
+      { min_value: 10, max_value: null, points: 5, display_order: 2 },
+    ],
+  },
+  {
+    criterion: {
+      label: "Payment Habit",
+      source_field: "payment_habit",
+      formula_type: "lookup",
+      direction: null,
+      linear_min: null,
+      linear_max: null,
+      weight: 10,
+      active: true,
+      display_order: 4,
+      description: "Ödeme alışkanlığı etiketi.",
+    },
+    lookupValues: [
+      { match_value: "Good Payer", points: 10, special_rule: null, description: null, display_order: 0 },
+      { match_value: "Neutral", points: 5, special_rule: null, description: null, display_order: 1 },
+      { match_value: "Bad Payer", points: 0, special_rule: null, description: null, display_order: 2 },
+    ],
+  },
+  {
+    criterion: {
+      label: "Stratejik Müşteri",
+      source_field: "strategic_customer",
+      formula_type: "lookup",
+      direction: null,
+      linear_min: null,
+      linear_max: null,
+      weight: 5,
+      active: true,
+      display_order: 5,
+      description: "Stratejik müşteri. Yes=ağırlık, No=0.",
+    },
+    lookupValues: [
+      { match_value: "true", points: 5, special_rule: null, description: "Yes", display_order: 0 },
+      { match_value: "false", points: 0, special_rule: null, description: "No", display_order: 1 },
+    ],
+  },
 ];
 
-export const DEFAULT_OVERDUE_DAYS_BANDS = [
-  { upper_bound_days: 7, points: 30, display_order: 0 },
-  { upper_bound_days: 30, points: 15, display_order: 1 },
-  { upper_bound_days: 60, points: 7, display_order: 2 },
-  { upper_bound_days: 90, points: 0, display_order: 3 },
-  { upper_bound_days: null, points: 0, display_order: 4 },
-];
-
-export const DEFAULT_TENURE_BANDS = [
-  { label: "1-4 yıl", min_years: 1, points: 1, display_order: 0 },
-  { label: "5-9 yıl", min_years: 5, points: 3, display_order: 1 },
-  { label: "≥10 yıl", min_years: 10, points: 5, display_order: 2 },
-];
-
-export const DEFAULT_PAYMENT_HABIT_SCORES = [
-  { habit_label: "Good Payer", points: 10, display_order: 0 },
-  { habit_label: "Neutral", points: 5, display_order: 1 },
-  { habit_label: "Bad Payer", points: 0, display_order: 2 },
-];
-
-export const DEFAULT_STRATEGIC_SCORES = [
-  { is_strategic: true, points: 5 },
-  { is_strategic: false, points: 0 },
-];
-
-export const DEFAULT_GRADE_THRESHOLDS = [
+export const DEFAULT_GRADE_THRESHOLDS: (GradeThreshold & { display_order: number })[] = [
   { min_score: 85, max_score: 100, grade_label: "A+", action_signal: "Green", recommended_action: "Normal ticaret / limit artırımı değerlendirilebilir", display_order: 0 },
   { min_score: 70, max_score: 84.99, grade_label: "A", action_signal: "Light Green", recommended_action: "Normal ticaret; periyodik takip", display_order: 1 },
   { min_score: 50, max_score: 69.99, grade_label: "B", action_signal: "Yellow", recommended_action: "Yakın takip; limit, vade ve tahsilat gözden geçirilmeli", display_order: 2 },

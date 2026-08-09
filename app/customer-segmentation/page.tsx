@@ -49,10 +49,10 @@ export default function CsDashboardPage() {
       }
       const [cfg, custRes] = await Promise.all([
         loadScoringConfig(user.id),
-        supabase
-          .from("CS_customers")
-          .select("id, risk_class, overdue_rate, overdue_days, years_active, payment_habit, strategic_customer")
-          .eq("user_id", user.id),
+        // select("*") rather than a fixed column list — criteria are fully
+        // user-defined now, so the score can depend on any CS_customers
+        // column, not just the original 6.
+        supabase.from("CS_customers").select("*").eq("user_id", user.id),
       ]);
       if (custRes.error) throw custRes.error;
       setConfig(cfg);
