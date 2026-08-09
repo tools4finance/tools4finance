@@ -16,7 +16,9 @@ const NAV_ITEMS = [
   { href: "/aidat/expenses", label: "Giderler" },
   { href: "/aidat/incomes", label: "Diğer Gelirler" },
   { href: "/aidat/budget", label: "Bütçe" },
-  { href: "/aidat/reports", label: "Raporlar" },
+  { href: "/aidat/reports", label: "Gelir Tablosu" },
+  { href: "/aidat/reports/trend", label: "Trend / Karşılaştırma" },
+  { href: "/aidat/reports/late-payers", label: "Aidat Aksatanlar" },
   { href: "/aidat/settings", label: "Ayarlar" },
 ];
 
