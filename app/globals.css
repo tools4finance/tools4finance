@@ -10,14 +10,18 @@
   --text: #161B2E;
   --text2: #545B72;
   --text3: #9499AC;
-  --accent: #2E3A8C;
+  /* Brand palette sourced directly from the tools4finance logo/icon pack:
+     navy #0B2952 and teal #0BBC97. --accent/--blue and --green are the two
+     brand colors; purple/coral/amber stay as secondary variety colors for
+     non-flagship product cards (Bridge/Graph) and status accents. */
+  --accent: #0B2952;
   --accent-text: #FFFFFF;
-  --green: #14805E;
-  --green-bg: #DFF1E9;
+  --green: #0B9B7D;
+  --green-bg: #DCF3EC;
   --amber: #92620C;
   --amber-bg: #F8EAD3;
-  --blue: #2E3A8C;
-  --blue-bg: #E5E7F8;
+  --blue: #0B2952;
+  --blue-bg: #E1E7EF;
   --purple: #5E4B9E;
   --purple-bg: #ECE6F8;
   --coral: #A14438;
@@ -36,14 +40,14 @@
   --text: #E7E9F5;
   --text2: #9DA2BC;
   --text3: #5F6480;
-  --accent: #8C97FF;
+  --accent: #6FA3E0;
   --accent-text: #10131F;
-  --green: #59CDA3;
-  --green-bg: #11302A;
+  --green: #3FDDB0;
+  --green-bg: #0E3A30;
   --amber: #E3B25C;
   --amber-bg: #362708;
-  --blue: #8C97FF;
-  --blue-bg: #1C2150;
+  --blue: #6FA3E0;
+  --blue-bg: #16294A;
   --purple: #B5A0EC;
   --purple-bg: #2A2050;
   --coral: #E0897A;
