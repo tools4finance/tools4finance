@@ -7,6 +7,9 @@ import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exp
 
 const currency = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
+const PIE_COLORS = ["var(--blue)", "var(--purple)", "var(--coral)", "var(--amber)", "var(--green)"];
+const PIE_OTHER_COLOR = "var(--text3)";
+
 const MONTH_NAMES = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
   "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
@@ -247,15 +250,21 @@ export default function TrendReportPage() {
       rows.reverse(); // newest first — management view convention
 
       const segmentTotalSum = Array.from(segmentTotals.values()).reduce((s, v) => s + v, 0);
-      const shares: SegmentShare[] = Array.from(segmentTotals.entries())
+      const sortedShares = Array.from(segmentTotals.entries())
         .filter(([, amount]) => amount !== 0)
-        .sort((a, b) => b[1] - a[1])
-        .map(([segment, amount]) => ({
-          key: segment,
-          label: stripSegmentPrefix(segment),
-          amount,
-          pct: segmentTotalSum > 0 ? (amount / segmentTotalSum) * 100 : 0,
-        }));
+        .sort((a, b) => b[1] - a[1]);
+      // Fold anything past the top PIE_COLORS.length segments into a single
+      // "Diğer" slice — same convention as the Dashboard's pie chart, so two
+      // unrelated, non-adjacent segments never end up sharing a cycled color.
+      const topShares = sortedShares.slice(0, PIE_COLORS.length);
+      const otherTotal = sortedShares.slice(PIE_COLORS.length).reduce((s, [, amount]) => s + amount, 0);
+      const shareEntries = otherTotal > 0 ? [...topShares, ["Diğer", otherTotal] as [string, number]] : topShares;
+      const shares: SegmentShare[] = shareEntries.map(([segment, amount]) => ({
+        key: segment,
+        label: segment === "Diğer" ? segment : stripSegmentPrefix(segment),
+        amount,
+        pct: segmentTotalSum > 0 ? (amount / segmentTotalSum) * 100 : 0,
+      }));
 
       setMonthRows(rows);
       setSegmentShares(shares);
@@ -286,6 +295,21 @@ export default function TrendReportPage() {
 
   const maxOpex = Math.max(0, ...monthRows.map((r) => r.opex));
   const maxCollected = Math.max(0, ...monthRows.map((r) => r.collected));
+
+  // segmentShares is already capped to PIE_COLORS.length real segments plus
+  // one trailing "Diğer" aggregate (see grouping logic in fetchAll).
+  const pieSlices = segmentShares.map((seg, i) => ({
+    ...seg,
+    color: seg.key === "Diğer" && i >= PIE_COLORS.length ? PIE_OTHER_COLOR : PIE_COLORS[i % PIE_COLORS.length],
+  }));
+  let pieCumulativePct = 0;
+  const pieConicStops = pieSlices
+    .map((seg) => {
+      const from = pieCumulativePct;
+      pieCumulativePct += seg.pct;
+      return `${seg.color} ${from}% ${pieCumulativePct}%`;
+    })
+    .join(", ");
 
   const rangeLabel = rangeMonths.length === 1
     ? `${MONTH_NAMES[rangeMonths[0].month - 1]} ${rangeMonths[0].year}`
@@ -469,20 +493,64 @@ export default function TrendReportPage() {
         {segmentShares.length === 0 ? (
           <div className="empty-state">Seçili aralık için OPEX gider kaydı yok.</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {segmentShares.map((seg) => (
-              <div key={seg.key}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                  <span>{seg.label}</span>
-                  <span style={{ color: "var(--text2)" }}>
-                    {currency.format(seg.amount)} <span style={{ color: "var(--text3)" }}>({formatPercent(seg.pct)})</span>
-                  </span>
+          <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ position: "relative", width: 180, height: 180, flexShrink: 0 }}>
+              <div
+                style={{
+                  width: 180,
+                  height: 180,
+                  borderRadius: "50%",
+                  background: `conic-gradient(${pieConicStops})`,
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  top: "20%",
+                  left: "20%",
+                  width: "60%",
+                  height: "60%",
+                  borderRadius: "50%",
+                  background: "var(--surface)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  padding: 4,
+                }}
+              >
+                <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  Toplam OPEX
                 </div>
-                <div style={{ height: 10, background: "var(--bg3)", borderRadius: 5, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${seg.pct}%`, background: "var(--blue)", borderRadius: 5 }} />
+                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                  {currency.format(segmentShares.reduce((s, r) => s + r.amount, 0))}
                 </div>
               </div>
-            ))}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 220, display: "flex", flexDirection: "column", gap: 10 }}>
+              {pieSlices.map((seg) => (
+                <div key={seg.key} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: seg.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span className="wrap" style={{ flex: 1, color: "var(--text)" }}>
+                    {seg.label}
+                  </span>
+                  <span style={{ color: "var(--text2)", whiteSpace: "nowrap" }}>{currency.format(seg.amount)}</span>
+                  <span style={{ color: "var(--text3)", width: 48, textAlign: "right", flexShrink: 0 }}>
+                    {formatPercent(seg.pct)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

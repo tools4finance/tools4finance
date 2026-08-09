@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
@@ -74,7 +74,7 @@ type IncomeRow = {
   income_category: IncomeCategoryJoin | IncomeCategoryJoin[] | null;
 };
 
-type ExpenseCategoryJoin = { main_segment: string; name: string; opex_capex: string };
+type ExpenseCategoryJoin = { main_segment: string; sub_segment: string; name: string; opex_capex: string };
 type ExpenseRow = {
   amount: number;
   fiscal_period_id: string;
@@ -93,6 +93,7 @@ type PeriodTotals = {
   digerOperasyonelGelirler: number; // B
   toplamGelir: number; // C = A + B
   opexBySegment: Map<string, number>; // D-L, keyed by main_segment
+  opexBySubSegment: Map<string, Map<string, number>>; // main_segment -> sub_segment -> amount
   toplamOperasyonelGider: number; // M
   faaliyetSonucu: number; // N = C - M
   finansalGelirler: number; // O
@@ -171,6 +172,17 @@ export default function ComparisonReportPage() {
 
   const [periodTotals, setPeriodTotals] = useState<PeriodTotals[]>([]);
   const [opexSegments, setOpexSegments] = useState<string[]>([]);
+  const [subSegmentsBySegment, setSubSegmentsBySegment] = useState<Map<string, string[]>>(new Map());
+  const [expandedSegments, setExpandedSegments] = useState<Set<string>>(new Set());
+
+  function toggleSegment(key: string) {
+    setExpandedSegments((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
   const [capexCategories, setCapexCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -214,6 +226,7 @@ export default function ComparisonReportPage() {
       const digerOperByPeriod = new Map<string, number>();
       const finansalGelirByPeriod = new Map<string, number>();
       const opexByPeriodSegment = new Map<string, Map<string, number>>();
+      const opexByPeriodSegmentSub = new Map<string, Map<string, Map<string, number>>>();
       const capexByPeriodCategory = new Map<string, Map<string, number>>();
 
       if (periodIds.length > 0) {
@@ -232,7 +245,7 @@ export default function ComparisonReportPage() {
             .in("fiscal_period_id", periodIds),
           supabase
             .from("expenses")
-            .select("amount, fiscal_period_id, expense_category:expense_categories!inner(main_segment, name, opex_capex)")
+            .select("amount, fiscal_period_id, expense_category:expense_categories!inner(main_segment, sub_segment, name, opex_capex)")
             .eq("site_id", selectedSiteId)
             .eq("status", "active")
             .in("fiscal_period_id", periodIds),
@@ -268,6 +281,12 @@ export default function ComparisonReportPage() {
             const bySegment = opexByPeriodSegment.get(row.fiscal_period_id) ?? new Map<string, number>();
             bySegment.set(cat.main_segment, (bySegment.get(cat.main_segment) ?? 0) + row.amount);
             opexByPeriodSegment.set(row.fiscal_period_id, bySegment);
+
+            const bySegmentSub = opexByPeriodSegmentSub.get(row.fiscal_period_id) ?? new Map<string, Map<string, number>>();
+            const bySub = bySegmentSub.get(cat.main_segment) ?? new Map<string, number>();
+            bySub.set(cat.sub_segment, (bySub.get(cat.sub_segment) ?? 0) + row.amount);
+            bySegmentSub.set(cat.main_segment, bySub);
+            opexByPeriodSegmentSub.set(row.fiscal_period_id, bySegmentSub);
           } else if (cat.opex_capex === "CAPEX") {
             const byCategory = capexByPeriodCategory.get(row.fiscal_period_id) ?? new Map<string, number>();
             byCategory.set(cat.name, (byCategory.get(cat.name) ?? 0) + row.amount);
@@ -287,6 +306,30 @@ export default function ComparisonReportPage() {
       }
       const sortedSegments = Array.from(segmentUnion).sort((a, b) => segmentOrder(a) - segmentOrder(b));
 
+      // Union of sub-segments (with nonzero total across the range) per main
+      // segment, sorted by total amount descending — used to render the "+"
+      // drill-down rows consistently across all period columns.
+      const subSegmentTotals = new Map<string, Map<string, number>>();
+      for (const bySegmentSub of opexByPeriodSegmentSub.values()) {
+        for (const [segment, bySub] of bySegmentSub.entries()) {
+          const totalsForSegment = subSegmentTotals.get(segment) ?? new Map<string, number>();
+          for (const [sub, amount] of bySub.entries()) {
+            totalsForSegment.set(sub, (totalsForSegment.get(sub) ?? 0) + amount);
+          }
+          subSegmentTotals.set(segment, totalsForSegment);
+        }
+      }
+      const subSegmentsBySegment = new Map<string, string[]>();
+      for (const [segment, subMap] of subSegmentTotals.entries()) {
+        subSegmentsBySegment.set(
+          segment,
+          Array.from(subMap.entries())
+            .filter(([, amount]) => amount !== 0)
+            .sort((a, b) => b[1] - a[1])
+            .map(([sub]) => sub)
+        );
+      }
+
       const capexCategoryTotals = new Map<string, number>();
       for (const byCategory of capexByPeriodCategory.values()) {
         for (const [name, amount] of byCategory.entries()) {
@@ -304,6 +347,7 @@ export default function ComparisonReportPage() {
         const digerOperasyonelGelirler = periodId ? digerOperByPeriod.get(periodId) ?? 0 : 0;
         const toplamGelir = aidatGelirleri + digerOperasyonelGelirler;
         const bySegment = (periodId ? opexByPeriodSegment.get(periodId) : undefined) ?? new Map<string, number>();
+        const bySegmentSub = (periodId ? opexByPeriodSegmentSub.get(periodId) : undefined) ?? new Map<string, Map<string, number>>();
         const toplamOperasyonelGider = Array.from(bySegment.values()).reduce((s, v) => s + v, 0);
         const faaliyetSonucu = toplamGelir - toplamOperasyonelGider;
         const finansalGelirler = periodId ? finansalGelirByPeriod.get(periodId) ?? 0 : 0;
@@ -320,6 +364,7 @@ export default function ComparisonReportPage() {
           digerOperasyonelGelirler,
           toplamGelir,
           opexBySegment: bySegment,
+          opexBySubSegment: bySegmentSub,
           toplamOperasyonelGider,
           faaliyetSonucu,
           finansalGelirler,
@@ -332,6 +377,7 @@ export default function ComparisonReportPage() {
 
       setPeriodTotals(totals);
       setOpexSegments(sortedSegments);
+      setSubSegmentsBySegment(subSegmentsBySegment);
       setCapexCategories(sortedCapexCategories);
       setLoading(false);
     } catch (err) {
@@ -568,16 +614,65 @@ export default function ComparisonReportPage() {
                   </td>
                 </tr>
               ) : (
-                opexSegments.map((segment) => (
-                  <tr key={segment}>
-                    <td className="wrap">{stripSegmentPrefix(segment)}</td>
-                    {periodTotals.map((p) => (
-                      <td className="num" key={`${p.year}-${p.month}`}>
-                        {currency.format(p.opexBySegment.get(segment) ?? 0)}
-                      </td>
-                    ))}
-                  </tr>
-                ))
+                opexSegments.map((segment) => {
+                  const subSegments = subSegmentsBySegment.get(segment) ?? [];
+                  const isExpanded = expandedSegments.has(segment);
+                  const canExpand = subSegments.length > 0;
+                  return (
+                    <Fragment key={segment}>
+                      <tr style={isExpanded ? { fontWeight: 600 } : undefined}>
+                        <td className="wrap">
+                          {canExpand && (
+                            <button
+                              type="button"
+                              onClick={() => toggleSegment(segment)}
+                              aria-label={isExpanded ? "Alt segmentleri gizle" : "Alt segmentleri göster"}
+                              style={{
+                                border: "0.5px solid var(--border-strong)",
+                                borderRadius: 4,
+                                width: 18,
+                                height: 18,
+                                lineHeight: "16px",
+                                textAlign: "center",
+                                marginRight: 8,
+                                background: "var(--surface)",
+                                color: "var(--text2)",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                padding: 0,
+                              }}
+                            >
+                              {isExpanded ? "−" : "+"}
+                            </button>
+                          )}
+                          {stripSegmentPrefix(segment)}
+                        </td>
+                        {periodTotals.map((p) => (
+                          <td className="num" key={`${p.year}-${p.month}`}>
+                            {currency.format(p.opexBySegment.get(segment) ?? 0)}
+                          </td>
+                        ))}
+                      </tr>
+                      {isExpanded &&
+                        subSegments.map((sub) => (
+                          <tr key={`${segment}::${sub}`}>
+                            <td className="wrap" style={{ paddingLeft: 34, color: "var(--text2)", fontSize: 13 }}>
+                              {sub}
+                            </td>
+                            {periodTotals.map((p) => (
+                              <td
+                                className="num"
+                                key={`${p.year}-${p.month}`}
+                                style={{ color: "var(--text2)", fontSize: 13 }}
+                              >
+                                {currency.format(p.opexBySubSegment.get(segment)?.get(sub) ?? 0)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                    </Fragment>
+                  );
+                })
               )}
 
               <tr>

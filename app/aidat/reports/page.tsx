@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
@@ -21,12 +21,13 @@ function segmentOrder(segment: string): number {
   return match ? parseInt(match[1], 10) : 999;
 }
 
-type SegmentLine = { key: string; label: string; amount: number };
+type SubSegmentLine = { key: string; label: string; amount: number };
+type SegmentLine = { key: string; label: string; amount: number; subLines?: SubSegmentLine[] };
 
 type IncomeCategoryJoin = { group_name: string };
 type IncomeRow = { amount: number; income_category: IncomeCategoryJoin | IncomeCategoryJoin[] | null };
 
-type ExpenseCategoryJoin = { main_segment: string; name: string; opex_capex: string };
+type ExpenseCategoryJoin = { main_segment: string; sub_segment: string; name: string; opex_capex: string };
 type ExpenseRow = { amount: number; expense_category: ExpenseCategoryJoin | ExpenseCategoryJoin[] | null };
 
 // Financial (non-operational) income is separately trackable via the
@@ -63,6 +64,16 @@ export default function AidatReportsPage() {
   const [data, setData] = useState<ReportData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSegments, setExpandedSegments] = useState<Set<string>>(new Set());
+
+  function toggleSegment(key: string) {
+    setExpandedSegments((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   const fetchAll = useCallback(async () => {
     if (!selectedSiteId) return;
@@ -105,14 +116,14 @@ export default function AidatReportsPage() {
           .eq("status", "active"),
         supabase
           .from("expenses")
-          .select("amount, expense_category:expense_categories!inner(main_segment, name, opex_capex)")
+          .select("amount, expense_category:expense_categories!inner(main_segment, sub_segment, name, opex_capex)")
           .eq("site_id", selectedSiteId)
           .eq("fiscal_period_id", periodId)
           .eq("status", "active")
           .eq("expense_category.opex_capex", "OPEX"),
         supabase
           .from("expenses")
-          .select("amount, expense_category:expense_categories!inner(main_segment, name, opex_capex)")
+          .select("amount, expense_category:expense_categories!inner(main_segment, sub_segment, name, opex_capex)")
           .eq("site_id", selectedSiteId)
           .eq("fiscal_period_id", periodId)
           .eq("status", "active")
@@ -138,15 +149,27 @@ export default function AidatReportsPage() {
       }
 
       const opexBySegment = new Map<string, number>();
+      const opexBySubSegment = new Map<string, Map<string, number>>();
       for (const row of (opexRes.data ?? []) as ExpenseRow[]) {
         const cat = unwrap(row.expense_category);
         if (!cat) continue;
         opexBySegment.set(cat.main_segment, (opexBySegment.get(cat.main_segment) ?? 0) + row.amount);
+        const subMap = opexBySubSegment.get(cat.main_segment) ?? new Map<string, number>();
+        subMap.set(cat.sub_segment, (subMap.get(cat.sub_segment) ?? 0) + row.amount);
+        opexBySubSegment.set(cat.main_segment, subMap);
       }
       const opexLines: SegmentLine[] = Array.from(opexBySegment.entries())
         .filter(([, amount]) => amount !== 0)
         .sort((a, b) => segmentOrder(a[0]) - segmentOrder(b[0]))
-        .map(([segment, amount]) => ({ key: segment, label: stripSegmentPrefix(segment), amount }));
+        .map(([segment, amount]) => ({
+          key: segment,
+          label: stripSegmentPrefix(segment),
+          amount,
+          subLines: Array.from((opexBySubSegment.get(segment) ?? new Map()).entries())
+            .filter(([, subAmount]) => subAmount !== 0)
+            .sort((a, b) => b[1] - a[1])
+            .map(([sub, subAmount]) => ({ key: `${segment}::${sub}`, label: sub, amount: subAmount })),
+        }));
 
       const capexByCategory = new Map<string, number>();
       for (const row of (capexRes.data ?? []) as ExpenseRow[]) {
@@ -305,12 +328,54 @@ export default function AidatReportsPage() {
                   </td>
                 </tr>
               ) : (
-                opexLines.map((line) => (
-                  <tr key={line.key}>
-                    <td className="wrap">{line.label}</td>
-                    <td className="num">{currency.format(line.amount)}</td>
-                  </tr>
-                ))
+                opexLines.map((line) => {
+                  const isExpanded = expandedSegments.has(line.key);
+                  const canExpand = (line.subLines?.length ?? 0) > 0;
+                  return (
+                    <Fragment key={line.key}>
+                      <tr style={isExpanded ? { fontWeight: 600 } : undefined}>
+                        <td className="wrap">
+                          {canExpand && (
+                            <button
+                              type="button"
+                              onClick={() => toggleSegment(line.key)}
+                              aria-label={isExpanded ? "Alt segmentleri gizle" : "Alt segmentleri göster"}
+                              style={{
+                                border: "0.5px solid var(--border-strong)",
+                                borderRadius: 4,
+                                width: 18,
+                                height: 18,
+                                lineHeight: "16px",
+                                textAlign: "center",
+                                marginRight: 8,
+                                background: "var(--surface)",
+                                color: "var(--text2)",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                padding: 0,
+                              }}
+                            >
+                              {isExpanded ? "−" : "+"}
+                            </button>
+                          )}
+                          {line.label}
+                        </td>
+                        <td className="num">{currency.format(line.amount)}</td>
+                      </tr>
+                      {isExpanded &&
+                        (line.subLines ?? []).map((sub) => (
+                          <tr key={sub.key}>
+                            <td className="wrap" style={{ paddingLeft: 34, color: "var(--text2)", fontSize: 13 }}>
+                              {sub.label}
+                            </td>
+                            <td className="num" style={{ color: "var(--text2)", fontSize: 13 }}>
+                              {currency.format(sub.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                    </Fragment>
+                  );
+                })
               )}
 
               <tr style={totalRowStyle}>
