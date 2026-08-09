@@ -24,7 +24,11 @@ Tam çalışır durumda, production'da yayında. Sayfalar: Dashboard (KPI + past
 
 Şema: `supabase/migrations/20260809190000_init_aidat_schema.sql` (ana) + `20260810000000..000003` (fx_rates, profiles phone, find_profile_by_email RPC, site_members/profiles FK fix).
 
-## Şu an yapılıyor: Customer Segmentation modülü (`app/CustomerSegmentation/**`, tablolar `CS_` önekli)
+## TAMAMLANDI (2026-08-10): Customer Segmentation modülü (`app/customer-segmentation/**`, tablolar `CS_` önekli)
+
+Tüm modül bitti, build temiz geçti, commit `90a2d35` ile push edildi, Vercel otomatik deploy başlattı. Aşağıdaki bölüm artık tarihsel bağlam olarak kalıyor — canlıda: Dashboard (KPI + skor notu dağılımı donut), Parametreler (6 tablo, satır ekle/sil/kaydet + "Varsayılanları Yükle"), Müşteriler (Excel toplu içe aktarma + arama + skor/not/aksiyon kolonları), tekil Skor Kartı (`/customer-segmentation/customers/[id]`, canlı yeniden hesaplama). Ana sayfada yeni ürün kartı eklendi (`/customer-segmentation`). Demo hesapta 834 müşteri + tüm varsayılan parametreler yüklü.
+
+## Eski durum notu (referans, artık geçerli değil — yukarıdaki "TAMAMLANDI" bölümüne bakın)
 
 Kullanıcı bir Excel dosyası verdi (`app/CustomerSegmentation/JH_Customer_Segmentation_saat 2213.xlsx`) — içinde hazır bir "Parametrik Risk Skoru Modeli" var (834 satır müşteri verisi + 6 parametre tablosu + tekil müşteri skor kartı şablonu). Bunu web uygulamasına dönüştürüyoruz, **tüm parametreler kullanıcı tarafından düzenlenebilir olmalı** (hardcode değil).
 
