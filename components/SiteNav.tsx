@@ -48,10 +48,9 @@ export default function SiteNav() {
   return (
     <nav className="site-nav">
       <Link href="/" className="nav-brand">
-        <div className="nav-logo">
-          <Image src="/logo-icon.png" alt="tools4finance" width={28} height={28} priority />
+        <div className="nav-logo-wordmark">
+          <Image src="/logo-wordmark.png" alt="tools4finance" width={1024} height={409} priority />
         </div>
-        <span className="nav-name">tools4finance</span>
       </Link>
       <div className="nav-links">
         <Link className="nav-link" href="/contact.html">{t.contact}</Link>
