@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { AidatProvider, useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 
@@ -174,12 +175,7 @@ function AidatTopBar({
     <div className="aidat-topbar">
       <Link href="/" className="nav-brand">
         <div className="nav-logo">
-          <svg viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="2" width="5" height="5" rx="1" fill="white" />
-            <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity="0.5" />
-            <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity="0.5" />
-            <rect x="9" y="9" width="5" height="5" rx="1" fill="white" />
-          </svg>
+          <Image src="/logo-icon.png" alt="tools4finance" width={28} height={28} />
         </div>
         <span className="nav-name">Site Bütçe Yönetimi</span>
       </Link>

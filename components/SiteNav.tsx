@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
 const STRINGS = {
@@ -48,12 +49,7 @@ export default function SiteNav() {
     <nav className="site-nav">
       <Link href="/" className="nav-brand">
         <div className="nav-logo">
-          <svg viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="2" width="5" height="5" rx="1" fill="white" />
-            <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity="0.5" />
-            <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity="0.5" />
-            <rect x="9" y="9" width="5" height="5" rx="1" fill="white" />
-          </svg>
+          <Image src="/logo-icon.png" alt="tools4finance" width={28} height={28} priority />
         </div>
         <span className="nav-name">tools4finance</span>
       </Link>
