@@ -253,7 +253,7 @@ footer.site-footer { border-top: 0.5px solid var(--border); padding: 24px 40px; 
 .panel-title { font-size: 15px; font-weight: 500; color: var(--text); }
 
 .table-scroll { overflow-x: auto; border: 0.5px solid var(--border); border-radius: 12px; }
-table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.data-table { width: auto; border-collapse: collapse; font-size: 13px; }
 table.data-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text3); font-weight: 500; padding: 10px 14px; background: var(--bg2); position: sticky; top: 0; white-space: nowrap; }
 table.data-table td { padding: 10px 14px; border-top: 0.5px solid var(--border); color: var(--text); white-space: nowrap; }
 table.data-table tbody tr:hover { background: var(--bg2); }
