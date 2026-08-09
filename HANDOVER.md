@@ -28,6 +28,41 @@ Tam çalışır durumda, production'da yayında. Sayfalar: Dashboard (KPI + past
 
 Tüm modül bitti, build temiz geçti, commit `90a2d35` ile push edildi, Vercel otomatik deploy başlattı. Aşağıdaki bölüm artık tarihsel bağlam olarak kalıyor — canlıda: Dashboard (KPI + skor notu dağılımı donut), Parametreler (6 tablo, satır ekle/sil/kaydet + "Varsayılanları Yükle"), Müşteriler (Excel toplu içe aktarma + arama + skor/not/aksiyon kolonları), tekil Skor Kartı (`/customer-segmentation/customers/[id]`, canlı yeniden hesaplama). Ana sayfada yeni ürün kartı eklendi (`/customer-segmentation`). Demo hesapta 834 müşteri + tüm varsayılan parametreler yüklü.
 
+## TAMAMLANDI (2026-08-10): KPI Tracker modülü (`app/kpi-tracker/**`, tablolar `KPI_` önekli)
+
+Kullanıcının isteği üzerine (aynı gece, Customer Segmentation'dan hemen sonra) sıfırdan inşa edildi, build temiz geçti, commit `953f7d2` ile push edildi. **Kullanıcı henüz test etmedi** (sabah test edeceğini söyledi) — bu modül canlıda ama hiç kullanıcı verisiyle doğrulanmadı, ilk incelemede dikkat edilmesi gereken en taze modül.
+
+**Ne yapıyor**: Çok basit bir performans yönetim sistemi. İK yöneticisi bir organizasyon açar (`create_kpi_organization` RPC, ilk kullanıcı otomatik `hr_admin` olur), departman ve kişi ekler (kişi = `KPI_members` satırı, `user_id=null`, `invite_status='pending'`). Davet linki yok/mail yok — "Davet Linki Kopyala" sadece `{origin}/login?next=/kpi-tracker` kopyalar, İK bunu manuel iletir. O e-posta ile giriş yapan herhangi bir kullanıcı, `kpi_claim_membership()` RPC'si (her `/kpi-tracker` yüklemesinde `lib/kpiContext.tsx` içinde çağrılıyor) sayesinde otomatik olarak o satıra bağlanır.
+
+İK bir dönem açar (örn. "2026 Hedefler", varsayılan %40 şirket / %60 bireysel ağırlık — `KPI_periods.company_weight_pct`/`individual_weight_pct`), taslakken şirket hedeflerini girer (`KPI_company_goals`, ağırlıkları toplamda %100 olmalı — UI uyarır ama DB'de sert kısıt yok), "Duyur" butonuyla `kpi_announce_period()` RPC'sini çağırır → dönem `active` olur + her üyeye bildirim düşer. Çalışanlar "Hedeflerim" sayfasında salt-okunur şirket hedeflerini görür, kendi bireysel hedeflerini girer (`KPI_individual_goals`, yine %100 toplam uyarısı), kendi gerçekleşme yüzdesini ve yorumunu girer. İK "Sonuçlar" sayfasından şirket hedeflerinin ortak gerçekleşme yüzdesini/yorumunu (tüm organizasyon için tek, kişi bazlı değil) ve her kişinin her bireysel hedefi için yönetici puanı/yorumu girer — bu bir hedefi güncellediğinde `trg_kpi_individual_goals_notify` trigger'ı otomatik bildirim oluşturur. İK dönemi kapatınca (`kpi_close_period()`) herkese "sonuçlarınız açıklandı" bildirimi gider ve "Hedeflerim" sayfası o kişinin final skorunu gösterir.
+
+**Skor formülü** (`lib/kpiScoring.ts`, `lib/customerScoring.ts` ile aynı disiplinde saf/Supabase'siz modül):
+`bireysel_skor = Σ(hedef.ağırlık% × (yönetici_puanı ?? kişi_puanı ?? 0))`, `şirket_skoru = Σ(hedef.ağırlık% × gerçekleşme%)`, `final = %şirket_ağırlığı × şirket_skoru + %bireysel_ağırlığı × bireysel_skor`.
+
+**RLS / güvenlik notu**: `KPI_individual_goals` üzerinde `manager_rating`/`manager_comment` alanlarını sadece İK değiştirebilsin diye Postgres RLS'in yapamadığı column-level kısıtı bir **BEFORE INSERT/UPDATE trigger** (`kpi_guard_individual_goal_fields`) ile zorluyoruz — HR olmayan bir çağrı bu alanları değiştirmeye çalışırsa sessizce eski değerine (`UPDATE`) ya da `null`'a (`INSERT`) resetleniyor, hata fırlatmıyor (böylece kişinin kendi `self_rating`/`self_comment` düzenlemesi aynı istekte sorunsuz geçiyor). Şirket hedefleri için böyle bir trigger'a gerek yok çünkü çalışanların o tabloda hiç yazma policy'si yok.
+
+**Bilinçli olarak basit bırakılanlar / ertelenenler**:
+- `KPI_period_member_weights` (kişi bazlı %40/%60 override) tablosu şemada var ama UI'da yok — İK şu an sadece dönem geneli ağırlığı ayarlayabiliyor, kişi bazlı override gerekirse tabloya doğrudan satır eklenmesi gerekir.
+- Gerçek e-posta/push bildirim yok, sadece uygulama içi (topbar'daki zil ikonu, `KPI_notifications` tablosu, hiçbir client-side insert policy'si yok — sadece RPC'ler ve trigger insert edebiliyor).
+- Ağırlık toplamının %100 olması DB seviyesinde zorunlu değil (agregate CHECK constraint Postgres'te satır bazlı olmadığı için pratik değil) — sadece UI uyarısı var, "Duyur" butonu %100 değilse de (onay isteyerek) izin veriyor.
+- Dashboard sayfası hafif tutuldu (detaylı skor tablosu yok, onun yerine "Sonuçlar" sayfasına link veriyor) — zaman kısıtı nedeniyle bilinçli kapsam kısıtlaması.
+- HR admin'in kendi bireysel hedefleri olabilir mi? Şema/RLS buna izin veriyor (HR da bir `KPI_members` satırı) ama hiç test edilmedi.
+
+**Kritik**: bu modül hiç manuel test edilmedi (build'in geçmesi dışında). Sabah ilk elden test edilmeli: org oluşturma → departman/kişi ekleme → davet linki ile ikinci bir hesapla giriş → auto-claim çalışıyor mu → dönem oluşturma → şirket hedefi girme → duyurma → bildirim gidiyor mu → ikinci hesaptan bireysel hedef girme → İK'nın Sonuçlar sayfasından puanlama → dönem kapatma → final skorun doğru hesaplanması.
+
+## Not: topbar deseni değişti (commit `edfac11`, bu handover'dan önce)
+
+`app/aidat/layout.tsx` ve `app/customer-segmentation/layout.tsx`'teki topbar artık eski `.nav-logo` (34px ikon) + `.nav-name` yerine şunu kullanıyor — yeni modül eklerken bu deseni takip et:
+```
+<Link href="/" className="nav-brand">
+  <div className="nav-logo-wordmark">
+    <Image src="/logo-wordmark.png" alt="tools4finance" width={1024} height={409} priority />
+  </div>
+</Link>
+<span className="aidat-topbar-title">Modül Adı</span>
+```
+`.aidat-topbar-title` topbar'a `position: absolute` ile ortalanmış (sol/sağ grup genişliğinden bağımsız). `.nav-logo`/`.nav-name` CSS'ten silindi, kullanma. KPI Tracker layout'u bu yeni deseni kullanıyor.
+
 ## Eski durum notu (referans, artık geçerli değil — yukarıdaki "TAMAMLANDI" bölümüne bakın)
 
 Kullanıcı bir Excel dosyası verdi (`app/CustomerSegmentation/JH_Customer_Segmentation_saat 2213.xlsx`) — içinde hazır bir "Parametrik Risk Skoru Modeli" var (834 satır müşteri verisi + 6 parametre tablosu + tekil müşteri skor kartı şablonu). Bunu web uygulamasına dönüştürüyoruz, **tüm parametreler kullanıcı tarafından düzenlenebilir olmalı** (hardcode değil).
