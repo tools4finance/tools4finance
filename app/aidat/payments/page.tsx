@@ -59,6 +59,18 @@ type AccrualOutstanding = Accrual & {
   outstanding: number;
 };
 
+type Resident = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
+
+type UnitResidentLink = {
+  unit_id: string;
+  resident_id: string;
+  end_date: string | null;
+};
+
 const METHOD_LABELS: Record<PaymentMethod, string> = {
   bank: "Banka",
   cash: "Nakit",
@@ -93,8 +105,20 @@ export default function PaymentsPage() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [unitResidentLinks, setUnitResidentLinks] = useState<UnitResidentLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Tahsilat Listesi filters
+  const [filterUnitId, setFilterUnitId] = useState("");
+  const [filterUnitSearch, setFilterUnitSearch] = useState("");
+  const [filterUnitPickerOpen, setFilterUnitPickerOpen] = useState(false);
+  const [filterResidentId, setFilterResidentId] = useState("");
+  const [filterResidentSearch, setFilterResidentSearch] = useState("");
+  const [filterResidentPickerOpen, setFilterResidentPickerOpen] = useState(false);
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   // Create-payment form
   const [showForm, setShowForm] = useState(false);
@@ -121,7 +145,7 @@ export default function PaymentsPage() {
     setLoading(true);
     setError(null);
 
-    const [blocksRes, unitsRes, paymentsRes] = await Promise.all([
+    const [blocksRes, unitsRes, paymentsRes, residentsRes] = await Promise.all([
       supabase.from("blocks").select("id, name").eq("site_id", selectedSiteId),
       supabase
         .from("units")
@@ -134,6 +158,11 @@ export default function PaymentsPage() {
         .eq("site_id", selectedSiteId)
         .order("payment_date", { ascending: false })
         .order("created_at", { ascending: false }),
+      supabase
+        .from("residents")
+        .select("id, first_name, last_name")
+        .eq("site_id", selectedSiteId)
+        .order("first_name", { ascending: true }),
     ]);
 
     if (blocksRes.error) {
@@ -142,10 +171,29 @@ export default function PaymentsPage() {
       setError(unitsRes.error.message);
     } else if (paymentsRes.error) {
       setError(paymentsRes.error.message);
+    } else if (residentsRes.error) {
+      setError(residentsRes.error.message);
     } else {
+      const unitList = (unitsRes.data ?? []) as Unit[];
       setBlocks((blocksRes.data ?? []) as Block[]);
-      setUnits((unitsRes.data ?? []) as Unit[]);
+      setUnits(unitList);
       setPayments((paymentsRes.data ?? []) as Payment[]);
+      setResidents((residentsRes.data ?? []) as Resident[]);
+
+      const unitIds = unitList.map((u) => u.id);
+      if (unitIds.length > 0) {
+        const linksRes = await supabase
+          .from("unit_residents")
+          .select("unit_id, resident_id, end_date")
+          .in("unit_id", unitIds);
+        if (linksRes.error) {
+          setError(linksRes.error.message);
+        } else {
+          setUnitResidentLinks((linksRes.data ?? []) as UnitResidentLink[]);
+        }
+      } else {
+        setUnitResidentLinks([]);
+      }
     }
     setLoading(false);
   }, [selectedSiteId]);
@@ -168,6 +216,62 @@ export default function PaymentsPage() {
     },
     [units, blockName]
   );
+
+  const residentLabel = useCallback(
+    (residentId: string) => {
+      const r = residents.find((x) => x.id === residentId);
+      return r ? `${r.first_name} ${r.last_name}` : "—";
+    },
+    [residents]
+  );
+
+  // Units currently (end_date null) or ever linked to a resident — used to
+  // resolve "kişi" filter -> the unit ids that resident's payments would be
+  // under. payments.resident_id itself is rarely populated (payments are
+  // recorded per-unit, not per-resident), so filtering by person has to go
+  // through unit_residents rather than a direct column match.
+  const unitIdsByResident = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const link of unitResidentLinks) {
+      if (!map.has(link.resident_id)) map.set(link.resident_id, new Set());
+      map.get(link.resident_id)!.add(link.unit_id);
+    }
+    return map;
+  }, [unitResidentLinks]);
+
+  const filteredUnitsForPicker = useMemo(() => {
+    const q = filterUnitSearch.trim().toLocaleLowerCase("tr");
+    if (!q) return units;
+    return units.filter((u) => unitLabel(u.id).toLocaleLowerCase("tr").includes(q));
+  }, [units, filterUnitSearch, unitLabel]);
+
+  const filteredResidentsForPicker = useMemo(() => {
+    const q = filterResidentSearch.trim().toLocaleLowerCase("tr");
+    if (!q) return residents;
+    return residents.filter((r) => `${r.first_name} ${r.last_name}`.toLocaleLowerCase("tr").includes(q));
+  }, [residents, filterResidentSearch]);
+
+  const filteredPayments = useMemo(() => {
+    const residentUnitIds = filterResidentId ? unitIdsByResident.get(filterResidentId) : null;
+    return payments.filter((p) => {
+      if (filterUnitId && p.unit_id !== filterUnitId) return false;
+      if (residentUnitIds && !residentUnitIds.has(p.unit_id)) return false;
+      if (filterDateFrom && p.payment_date < filterDateFrom) return false;
+      if (filterDateTo && p.payment_date > filterDateTo) return false;
+      return true;
+    });
+  }, [payments, filterUnitId, filterResidentId, unitIdsByResident, filterDateFrom, filterDateTo]);
+
+  function clearFilters() {
+    setFilterUnitId("");
+    setFilterUnitSearch("");
+    setFilterResidentId("");
+    setFilterResidentSearch("");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  }
+
+  const hasActiveFilters = !!(filterUnitId || filterResidentId || filterDateFrom || filterDateTo);
 
   function openForm() {
     setFormUnitId(units[0]?.id ?? "");
@@ -545,10 +649,131 @@ export default function PaymentsPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Tahsilat Listesi</div>
+          {hasActiveFilters && (
+            <button className="btn-secondary" onClick={clearFilters}>
+              Filtreleri Temizle
+            </button>
+          )}
+        </div>
+
+        <div className="form-grid">
+          <label className="auth-field" style={{ position: "relative" }}>
+            <span>Daire</span>
+            <input
+              type="text"
+              value={filterUnitSearch}
+              placeholder="Blok veya daire no yazın…"
+              onFocus={() => setFilterUnitPickerOpen(true)}
+              onChange={(e) => {
+                setFilterUnitSearch(e.target.value);
+                setFilterUnitPickerOpen(true);
+                if (filterUnitId) setFilterUnitId("");
+              }}
+              onBlur={() => setTimeout(() => setFilterUnitPickerOpen(false), 150)}
+            />
+            {filterUnitPickerOpen && (
+              <div className="unit-picker-dropdown">
+                <button
+                  type="button"
+                  className="unit-picker-item"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setFilterUnitId("");
+                    setFilterUnitSearch("");
+                    setFilterUnitPickerOpen(false);
+                  }}
+                >
+                  Tüm daireler
+                </button>
+                {filteredUnitsForPicker.length === 0 ? (
+                  <div className="unit-picker-empty">Eşleşen daire yok.</div>
+                ) : (
+                  filteredUnitsForPicker.map((u) => (
+                    <button
+                      type="button"
+                      key={u.id}
+                      className="unit-picker-item"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setFilterUnitId(u.id);
+                        setFilterUnitSearch(unitLabel(u.id));
+                        setFilterUnitPickerOpen(false);
+                      }}
+                    >
+                      {unitLabel(u.id)}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </label>
+
+          <label className="auth-field" style={{ position: "relative" }}>
+            <span>Kişi (Sakin)</span>
+            <input
+              type="text"
+              value={filterResidentSearch}
+              placeholder="Ad soyad yazın…"
+              disabled={residents.length === 0}
+              onFocus={() => setFilterResidentPickerOpen(true)}
+              onChange={(e) => {
+                setFilterResidentSearch(e.target.value);
+                setFilterResidentPickerOpen(true);
+                if (filterResidentId) setFilterResidentId("");
+              }}
+              onBlur={() => setTimeout(() => setFilterResidentPickerOpen(false), 150)}
+            />
+            {filterResidentPickerOpen && (
+              <div className="unit-picker-dropdown">
+                <button
+                  type="button"
+                  className="unit-picker-item"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setFilterResidentId("");
+                    setFilterResidentSearch("");
+                    setFilterResidentPickerOpen(false);
+                  }}
+                >
+                  Tüm sakinler
+                </button>
+                {filteredResidentsForPicker.length === 0 ? (
+                  <div className="unit-picker-empty">Eşleşen sakin yok.</div>
+                ) : (
+                  filteredResidentsForPicker.map((r) => (
+                    <button
+                      type="button"
+                      key={r.id}
+                      className="unit-picker-item"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setFilterResidentId(r.id);
+                        setFilterResidentSearch(residentLabel(r.id));
+                        setFilterResidentPickerOpen(false);
+                      }}
+                    >
+                      {residentLabel(r.id)}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </label>
+
+          <label className="auth-field">
+            <span>Başlangıç Tarihi</span>
+            <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+          </label>
+          <label className="auth-field">
+            <span>Bitiş Tarihi</span>
+            <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+          </label>
         </div>
 
         {payments.length === 0 ? (
           <div className="empty-state">Henüz tahsilat kaydı yok.</div>
+        ) : filteredPayments.length === 0 ? (
+          <div className="empty-state">Filtrelere uyan tahsilat yok.</div>
         ) : (
           <div className="table-scroll">
             <table className="data-table">
@@ -564,7 +789,7 @@ export default function PaymentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
+                {filteredPayments.map((p) => (
                   <tr key={p.id}>
                     <td>{unitLabel(p.unit_id)}</td>
                     <td>{formatDate(p.payment_date)}</td>

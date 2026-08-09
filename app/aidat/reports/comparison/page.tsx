@@ -130,16 +130,27 @@ export default function ComparisonReportPage() {
     setEndMonth(defaultEnd.month);
   }
 
+  // If the user picks a start after the end, self-correct the PICKER'S OWN
+  // state by swapping start/end — not just the internal query range below —
+  // so the dropdowns never keep showing an inverted, confusing selection.
+  useEffect(() => {
+    const startIdx = monthIndex(startYear, startMonth);
+    const endIdx = monthIndex(endYear, endMonth);
+    if (startIdx > endIdx) {
+      setStartYear(endYear);
+      setStartMonth(endMonth);
+      setEndYear(startYear);
+      setEndMonth(startMonth);
+    }
+  }, [startYear, startMonth, endYear, endMonth]);
+
   // Normalize + clamp the picker into an ascending, capped list of (year,
-  // month) pairs — swaps a reversed start/end and trims from the front if
-  // the span exceeds MAX_MONTHS, so the query side never has to worry
-  // about it.
+  // month) pairs. Trims from the front if the span exceeds MAX_MONTHS, so
+  // the query side never has to worry about it. (Reversed start/end is
+  // handled above by correcting the picker state directly, not here.)
   const { months: rangeMonths, clamped } = useMemo(() => {
     let startIdx = monthIndex(startYear, startMonth);
     let endIdx = monthIndex(endYear, endMonth);
-    if (startIdx > endIdx) {
-      [startIdx, endIdx] = [endIdx, startIdx];
-    }
     let wasClamped = false;
     if (endIdx - startIdx + 1 > MAX_MONTHS) {
       startIdx = endIdx - (MAX_MONTHS - 1);
