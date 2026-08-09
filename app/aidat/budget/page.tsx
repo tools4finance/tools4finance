@@ -39,18 +39,12 @@ function formatCurrency(amount: number): string {
   return currencyFormatter.format(amount);
 }
 
-function groupByKey<T>(items: T[], keyFn: (item: T) => string): Array<{ key: string; items: T[] }> {
-  const order: string[] = [];
-  const map = new Map<string, T[]>();
-  for (const item of items) {
-    const key = keyFn(item);
-    if (!map.has(key)) {
-      map.set(key, []);
-      order.push(key);
-    }
-    map.get(key)!.push(item);
-  }
-  return order.map((key) => ({ key, items: map.get(key)! }));
+function expenseCategoryLabel(cat: ExpenseCategory): string {
+  return [cat.main_segment, cat.sub_segment, cat.name].filter(Boolean).join(" / ");
+}
+
+function incomeCategoryLabel(cat: IncomeCategory): string {
+  return [cat.group_name, cat.name].filter(Boolean).join(" / ");
 }
 
 export default function BudgetPage() {
@@ -69,11 +63,32 @@ export default function BudgetPage() {
   const [expenseValues, setExpenseValues] = useState<Record<string, string>>({});
   const [incomeValues, setIncomeValues] = useState<Record<string, string>>({});
 
+  // "Relevant-first" presentation: only categories in these sets render in the
+  // "Bütçelenen Kalemler" list. Seeded from existing nonzero budget_lines on
+  // every fetch; categories added via the "Kategori Ekle" picker are appended
+  // here immediately so they appear in the list before the user hits Kaydet.
+  const [visibleExpenseIds, setVisibleExpenseIds] = useState<Set<string>>(new Set());
+  const [visibleIncomeIds, setVisibleIncomeIds] = useState<Set<string>>(new Set());
+
+  const [showExpensePicker, setShowExpensePicker] = useState(false);
+  const [expensePickerSearch, setExpensePickerSearch] = useState("");
+  const [expensePickerOpen, setExpensePickerOpen] = useState(false);
+
+  const [showIncomePicker, setShowIncomePicker] = useState(false);
+  const [incomePickerSearch, setIncomePickerSearch] = useState("");
+  const [incomePickerOpen, setIncomePickerOpen] = useState(false);
+
   const fetchAll = useCallback(async () => {
     if (!selectedSiteId) return;
     setLoading(true);
     setError(null);
     setSaveMessage(null);
+    setShowExpensePicker(false);
+    setExpensePickerSearch("");
+    setExpensePickerOpen(false);
+    setShowIncomePicker(false);
+    setIncomePickerSearch("");
+    setIncomePickerOpen(false);
 
     const { data: periodId, error: periodError } = await supabase.rpc("get_or_create_fiscal_period", {
       p_site_id: selectedSiteId,
@@ -142,14 +157,18 @@ export default function BudgetPage() {
     }
 
     const expValues: Record<string, string> = {};
+    const visibleExp = new Set<string>();
     for (const cat of expCats) {
       const line = expLinesMap.get(cat.id);
       expValues[cat.id] = line && line.budget_amount ? String(line.budget_amount) : "";
+      if (line && line.budget_amount) visibleExp.add(cat.id);
     }
     const incValues: Record<string, string> = {};
+    const visibleInc = new Set<string>();
     for (const cat of incCats) {
       const line = incLinesMap.get(cat.id);
       incValues[cat.id] = line && line.budget_amount ? String(line.budget_amount) : "";
+      if (line && line.budget_amount) visibleInc.add(cat.id);
     }
 
     setExpenseCategories(expCats);
@@ -158,6 +177,8 @@ export default function BudgetPage() {
     setIncomeLines(incLinesMap);
     setExpenseValues(expValues);
     setIncomeValues(incValues);
+    setVisibleExpenseIds(visibleExp);
+    setVisibleIncomeIds(visibleInc);
     setLoading(false);
   }, [selectedSiteId, year, month]);
 
@@ -165,14 +186,71 @@ export default function BudgetPage() {
     fetchAll();
   }, [fetchAll]);
 
-  const expenseGroups = useMemo(
-    () => groupByKey(expenseCategories, (c) => c.main_segment || "Diğer"),
-    [expenseCategories]
+  const visibleExpenseCategories = useMemo(
+    () => expenseCategories.filter((c) => visibleExpenseIds.has(c.id)),
+    [expenseCategories, visibleExpenseIds]
   );
-  const incomeGroups = useMemo(
-    () => groupByKey(incomeCategories, (c) => c.group_name || "Diğer"),
-    [incomeCategories]
+  const visibleIncomeCategories = useMemo(
+    () => incomeCategories.filter((c) => visibleIncomeIds.has(c.id)),
+    [incomeCategories, visibleIncomeIds]
   );
+
+  const availableExpenseCategories = useMemo(
+    () => expenseCategories.filter((c) => !visibleExpenseIds.has(c.id)),
+    [expenseCategories, visibleExpenseIds]
+  );
+  const availableIncomeCategories = useMemo(
+    () => incomeCategories.filter((c) => !visibleIncomeIds.has(c.id)),
+    [incomeCategories, visibleIncomeIds]
+  );
+
+  const filteredExpensePickerItems = useMemo(() => {
+    const q = expensePickerSearch.trim().toLocaleLowerCase("tr");
+    if (!q) return availableExpenseCategories;
+    return availableExpenseCategories.filter((c) => expenseCategoryLabel(c).toLocaleLowerCase("tr").includes(q));
+  }, [availableExpenseCategories, expensePickerSearch]);
+
+  const filteredIncomePickerItems = useMemo(() => {
+    const q = incomePickerSearch.trim().toLocaleLowerCase("tr");
+    if (!q) return availableIncomeCategories;
+    return availableIncomeCategories.filter((c) => incomeCategoryLabel(c).toLocaleLowerCase("tr").includes(q));
+  }, [availableIncomeCategories, incomePickerSearch]);
+
+  function addExpenseCategory(catId: string) {
+    setVisibleExpenseIds((prev) => {
+      const next = new Set(prev);
+      next.add(catId);
+      return next;
+    });
+    setExpensePickerSearch("");
+  }
+
+  function removeExpenseCategory(catId: string) {
+    setVisibleExpenseIds((prev) => {
+      const next = new Set(prev);
+      next.delete(catId);
+      return next;
+    });
+    setExpenseValues((prev) => ({ ...prev, [catId]: "" }));
+  }
+
+  function addIncomeCategory(catId: string) {
+    setVisibleIncomeIds((prev) => {
+      const next = new Set(prev);
+      next.add(catId);
+      return next;
+    });
+    setIncomePickerSearch("");
+  }
+
+  function removeIncomeCategory(catId: string) {
+    setVisibleIncomeIds((prev) => {
+      const next = new Set(prev);
+      next.delete(catId);
+      return next;
+    });
+    setIncomeValues((prev) => ({ ...prev, [catId]: "" }));
+  }
 
   const expenseTotal = useMemo(
     () => Object.values(expenseValues).reduce((sum, v) => sum + (parseFloat(v) || 0), 0),
@@ -259,14 +337,6 @@ export default function BudgetPage() {
       title: "Bütçe (Gelir)",
       subtitle: periodLabel,
     });
-  }
-
-  function segmentBudgetedCount(items: ExpenseCategory[]): number {
-    return items.filter((c) => (parseFloat(expenseValues[c.id] ?? "") || 0) > 0).length;
-  }
-
-  function groupBudgetedCount(items: IncomeCategory[]): number {
-    return items.filter((c) => (parseFloat(incomeValues[c.id] ?? "") || 0) > 0).length;
   }
 
   async function handleSave() {
@@ -364,7 +434,7 @@ export default function BudgetPage() {
 
       <div className="panel">
         <div className="panel-header">
-          <div className="panel-title">Gider Bütçesi</div>
+          <div className="panel-title">Gider Bütçesi — Bütçelenen Kalemler ({periodLabel})</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               type="button"
@@ -385,89 +455,140 @@ export default function BudgetPage() {
           </div>
         </div>
 
-        {expenseGroups.length === 0 ? (
-          <div className="empty-state">Gider kategorisi bulunamadı.</div>
+        {visibleExpenseCategories.length === 0 ? (
+          <div className="empty-state">
+            Bu dönem için henüz bütçelenmiş gider kalemi yok. Aşağıdaki &quot;Kategori Ekle&quot; ile ekleyebilirsiniz.
+          </div>
         ) : (
-          expenseGroups.map((group, idx) => {
-            const budgetedCount = segmentBudgetedCount(group.items);
-            return (
-              <details key={group.key} open={idx === 0} style={{ marginBottom: 10 }}>
-                <summary
-                  style={{
-                    cursor: "pointer",
-                    padding: "8px 4px",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--text)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  {group.key}
-                  {budgetedCount > 0 && (
-                    <span className="pill pill-blue">{budgetedCount} kalem bütçeli</span>
-                  )}
-                </summary>
-                <div className="table-scroll">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Alt Segment</th>
-                        <th>Kategori</th>
-                        <th>Tür</th>
-                        <th className="num">Bütçe Tutarı</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.items.map((cat) => (
-                        <tr key={cat.id}>
-                          <td className="wrap">{cat.sub_segment ?? "—"}</td>
-                          <td className="wrap">{cat.name}</td>
-                          <td>
-                            {cat.opex_capex ? (
-                              <span className={`pill ${cat.opex_capex === "CAPEX" ? "pill-amber" : "pill-neutral"}`}>
-                                {cat.opex_capex}
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td className="num">
-                            {canWrite ? (
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={expenseValues[cat.id] ?? ""}
-                                onChange={(e) =>
-                                  setExpenseValues((prev) => ({ ...prev, [cat.id]: e.target.value }))
-                                }
-                                placeholder="0"
-                                style={{ width: 120, textAlign: "right" }}
-                              />
-                            ) : (
-                              formatCurrency(parseFloat(expenseValues[cat.id] ?? "") || 0)
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </details>
-            );
-          })
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Ana Segment</th>
+                  <th>Alt Segment</th>
+                  <th>Kategori</th>
+                  <th>Tür</th>
+                  <th className="num">Bütçe Tutarı</th>
+                  {canWrite && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleExpenseCategories.map((cat) => (
+                  <tr key={cat.id}>
+                    <td className="wrap">{cat.main_segment || "—"}</td>
+                    <td className="wrap">{cat.sub_segment ?? "—"}</td>
+                    <td className="wrap">{cat.name}</td>
+                    <td>
+                      {cat.opex_capex ? (
+                        <span className={`pill ${cat.opex_capex === "CAPEX" ? "pill-amber" : "pill-neutral"}`}>
+                          {cat.opex_capex}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="num">
+                      {canWrite ? (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={expenseValues[cat.id] ?? ""}
+                          onChange={(e) =>
+                            setExpenseValues((prev) => ({ ...prev, [cat.id]: e.target.value }))
+                          }
+                          placeholder="0"
+                          style={{ width: 120, textAlign: "right" }}
+                        />
+                      ) : (
+                        formatCurrency(parseFloat(expenseValues[cat.id] ?? "") || 0)
+                      )}
+                    </td>
+                    {canWrite && (
+                      <td>
+                        <button type="button" className="btn-secondary" onClick={() => removeExpenseCategory(cat.id)}>
+                          Kaldır
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, fontSize: 13, fontWeight: 500 }}>
           Gider Bütçesi Toplamı: {formatCurrency(expenseTotal)}
         </div>
+
+        {canWrite && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: "0.5px solid var(--border)" }}>
+            {!showExpensePicker ? (
+              <button type="button" className="btn-secondary" onClick={() => setShowExpensePicker(true)}>
+                + Kategori Ekle
+              </button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <label className="auth-field" style={{ position: "relative", maxWidth: 420, flex: 1 }}>
+                  <span>Kategori Ara</span>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={expensePickerSearch}
+                    placeholder="Segment, alt segment veya kategori adı yazın…"
+                    onFocus={() => setExpensePickerOpen(true)}
+                    onChange={(e) => {
+                      setExpensePickerSearch(e.target.value);
+                      setExpensePickerOpen(true);
+                    }}
+                    onBlur={() => setTimeout(() => setExpensePickerOpen(false), 150)}
+                  />
+                  {expensePickerOpen && (
+                    <div className="unit-picker-dropdown">
+                      {filteredExpensePickerItems.length === 0 ? (
+                        <div className="unit-picker-empty">
+                          {availableExpenseCategories.length === 0
+                            ? "Tüm kategoriler zaten eklendi."
+                            : "Eşleşen kategori yok."}
+                        </div>
+                      ) : (
+                        filteredExpensePickerItems.map((cat) => (
+                          <button
+                            type="button"
+                            key={cat.id}
+                            className="unit-picker-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => addExpenseCategory(cat.id)}
+                          >
+                            {expenseCategoryLabel(cat)}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </label>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowExpensePicker(false);
+                    setExpensePickerSearch("");
+                    setExpensePickerOpen(false);
+                  }}
+                  style={{ marginTop: 20 }}
+                >
+                  Kapat
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="panel">
         <div className="panel-header">
-          <div className="panel-title">Gelir Bütçesi</div>
+          <div className="panel-title">Gelir Bütçesi — Bütçelenen Kalemler ({periodLabel})</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               type="button"
@@ -488,72 +609,123 @@ export default function BudgetPage() {
           </div>
         </div>
 
-        {incomeGroups.length === 0 ? (
-          <div className="empty-state">Gelir kategorisi bulunamadı.</div>
+        {visibleIncomeCategories.length === 0 ? (
+          <div className="empty-state">
+            Bu dönem için henüz bütçelenmiş gelir kalemi yok. Aşağıdaki &quot;Kategori Ekle&quot; ile ekleyebilirsiniz.
+          </div>
         ) : (
-          incomeGroups.map((group, idx) => {
-            const budgetedCount = groupBudgetedCount(group.items);
-            return (
-              <details key={group.key} open={idx === 0} style={{ marginBottom: 10 }}>
-                <summary
-                  style={{
-                    cursor: "pointer",
-                    padding: "8px 4px",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--text)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  {group.key}
-                  {budgetedCount > 0 && (
-                    <span className="pill pill-blue">{budgetedCount} kalem bütçeli</span>
-                  )}
-                </summary>
-                <div className="table-scroll">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Kategori</th>
-                        <th className="num">Bütçe Tutarı</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.items.map((cat) => (
-                        <tr key={cat.id}>
-                          <td className="wrap">{cat.name}</td>
-                          <td className="num">
-                            {canWrite ? (
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={incomeValues[cat.id] ?? ""}
-                                onChange={(e) =>
-                                  setIncomeValues((prev) => ({ ...prev, [cat.id]: e.target.value }))
-                                }
-                                placeholder="0"
-                                style={{ width: 120, textAlign: "right" }}
-                              />
-                            ) : (
-                              formatCurrency(parseFloat(incomeValues[cat.id] ?? "") || 0)
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </details>
-            );
-          })
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Grup</th>
+                  <th>Kategori</th>
+                  <th className="num">Bütçe Tutarı</th>
+                  {canWrite && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleIncomeCategories.map((cat) => (
+                  <tr key={cat.id}>
+                    <td className="wrap">{cat.group_name || "—"}</td>
+                    <td className="wrap">{cat.name}</td>
+                    <td className="num">
+                      {canWrite ? (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={incomeValues[cat.id] ?? ""}
+                          onChange={(e) =>
+                            setIncomeValues((prev) => ({ ...prev, [cat.id]: e.target.value }))
+                          }
+                          placeholder="0"
+                          style={{ width: 120, textAlign: "right" }}
+                        />
+                      ) : (
+                        formatCurrency(parseFloat(incomeValues[cat.id] ?? "") || 0)
+                      )}
+                    </td>
+                    {canWrite && (
+                      <td>
+                        <button type="button" className="btn-secondary" onClick={() => removeIncomeCategory(cat.id)}>
+                          Kaldır
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, fontSize: 13, fontWeight: 500 }}>
           Gelir Bütçesi Toplamı: {formatCurrency(incomeTotal)}
         </div>
+
+        {canWrite && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: "0.5px solid var(--border)" }}>
+            {!showIncomePicker ? (
+              <button type="button" className="btn-secondary" onClick={() => setShowIncomePicker(true)}>
+                + Kategori Ekle
+              </button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <label className="auth-field" style={{ position: "relative", maxWidth: 420, flex: 1 }}>
+                  <span>Kategori Ara</span>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={incomePickerSearch}
+                    placeholder="Grup veya kategori adı yazın…"
+                    onFocus={() => setIncomePickerOpen(true)}
+                    onChange={(e) => {
+                      setIncomePickerSearch(e.target.value);
+                      setIncomePickerOpen(true);
+                    }}
+                    onBlur={() => setTimeout(() => setIncomePickerOpen(false), 150)}
+                  />
+                  {incomePickerOpen && (
+                    <div className="unit-picker-dropdown">
+                      {filteredIncomePickerItems.length === 0 ? (
+                        <div className="unit-picker-empty">
+                          {availableIncomeCategories.length === 0
+                            ? "Tüm kategoriler zaten eklendi."
+                            : "Eşleşen kategori yok."}
+                        </div>
+                      ) : (
+                        filteredIncomePickerItems.map((cat) => (
+                          <button
+                            type="button"
+                            key={cat.id}
+                            className="unit-picker-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => addIncomeCategory(cat.id)}
+                          >
+                            {incomeCategoryLabel(cat)}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </label>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowIncomePicker(false);
+                    setIncomePickerSearch("");
+                    setIncomePickerOpen(false);
+                  }}
+                  style={{ marginTop: 20 }}
+                >
+                  Kapat
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {canWrite && (

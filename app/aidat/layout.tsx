@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/aidat/units", label: "Daireler" },
   { href: "/aidat/residents", label: "Sakinler" },
   { href: "/aidat/dues", label: "Aidatlar" },
+  { href: "/aidat/dues/rates", label: "Aidat Tutarları" },
   { href: "/aidat/payments", label: "Tahsilatlar" },
   { href: "/aidat/current-account", label: "Cari Hesap" },
   { href: "/aidat/expenses", label: "Giderler" },
