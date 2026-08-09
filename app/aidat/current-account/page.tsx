@@ -73,6 +73,8 @@ export default function CurrentAccountPage() {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
+  const [unitSearch, setUnitSearch] = useState("");
+  const [unitPickerOpen, setUnitPickerOpen] = useState(false);
 
   const fetchUnits = useCallback(async () => {
     if (!selectedSiteId) return;
@@ -102,6 +104,7 @@ export default function CurrentAccountPage() {
   useEffect(() => {
     fetchUnits();
     setSelectedUnitId("");
+    setUnitSearch("");
   }, [fetchUnits]);
 
   const blockName = useCallback(
@@ -165,6 +168,18 @@ export default function CurrentAccountPage() {
     fetchLedger();
   }, [fetchLedger]);
 
+  const filteredUnits = useMemo(() => {
+    const q = unitSearch.trim().toLocaleLowerCase("tr");
+    if (!q) return units;
+    return units.filter((u) => unitLabel(u.id).toLocaleLowerCase("tr").includes(q));
+  }, [units, unitSearch, unitLabel]);
+
+  function pickUnit(unitId: string) {
+    setSelectedUnitId(unitId);
+    setUnitSearch(unitLabel(unitId));
+    setUnitPickerOpen(false);
+  }
+
   const entriesWithRunningBalance = useMemo(() => {
     let running = 0;
     return entries.map((e) => {
@@ -191,20 +206,43 @@ export default function CurrentAccountPage() {
         </div>
 
         <div className="form-grid">
-          <label className="auth-field">
-            <span>Daire{units.length === 0 ? " (yok)" : ""}</span>
-            <select
-              value={selectedUnitId}
-              onChange={(e) => setSelectedUnitId(e.target.value)}
+          <label className="auth-field" style={{ position: "relative" }}>
+            <span>Daire{units.length === 0 ? " (yok)" : ""} — ara veya seç</span>
+            <input
+              type="text"
+              value={unitSearch}
               disabled={units.length === 0}
-            >
-              <option value="">Seçiniz</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {unitLabel(u.id)}
-                </option>
-              ))}
-            </select>
+              placeholder="Blok veya daire no yazın…"
+              onFocus={() => setUnitPickerOpen(true)}
+              onChange={(e) => {
+                setUnitSearch(e.target.value);
+                setUnitPickerOpen(true);
+                if (selectedUnitId) setSelectedUnitId("");
+              }}
+              onBlur={() => {
+                // allow the click on a list item to register before closing
+                setTimeout(() => setUnitPickerOpen(false), 150);
+              }}
+            />
+            {unitPickerOpen && (
+              <div className="unit-picker-dropdown">
+                {filteredUnits.length === 0 ? (
+                  <div className="unit-picker-empty">Eşleşen daire yok.</div>
+                ) : (
+                  filteredUnits.map((u) => (
+                    <button
+                      type="button"
+                      key={u.id}
+                      className="unit-picker-item"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickUnit(u.id)}
+                    >
+                      {unitLabel(u.id)}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </label>
         </div>
       </div>
