@@ -24,12 +24,20 @@ type Unit = {
   active: boolean;
 };
 
+type DuesRule = {
+  id: string;
+  unit_id: string | null;
+  amount: number;
+  active: boolean;
+};
+
 type UnitFormState = {
   block_id: string;
   unit_number: string;
   unit_type: string;
   gross_sqm: string;
   net_sqm: string;
+  dues_amount: string;
 };
 
 const EMPTY_UNIT_FORM: UnitFormState = {
@@ -38,13 +46,19 @@ const EMPTY_UNIT_FORM: UnitFormState = {
   unit_type: "",
   gross_sqm: "",
   net_sqm: "",
+  dues_amount: "",
 };
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(amount);
+}
 
 export default function UnitsPage() {
   const { selectedSiteId, canWrite } = useAidat();
 
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [duesRulesByUnit, setDuesRulesByUnit] = useState<Record<string, DuesRule>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +82,7 @@ export default function UnitsPage() {
     setLoading(true);
     setError(null);
 
-    const [blocksRes, unitsRes] = await Promise.all([
+    const [blocksRes, unitsRes, duesRulesRes] = await Promise.all([
       supabase
         .from("blocks")
         .select("id, site_id, name, display_order, active")
@@ -79,15 +93,28 @@ export default function UnitsPage() {
         .select("id, site_id, block_id, unit_number, unit_type, gross_sqm, net_sqm, ownership_share, active")
         .eq("site_id", selectedSiteId)
         .order("unit_number", { ascending: true }),
+      supabase
+        .from("dues_rules")
+        .select("id, unit_id, amount, active")
+        .eq("site_id", selectedSiteId)
+        .eq("active", true)
+        .not("unit_id", "is", null),
     ]);
 
     if (blocksRes.error) {
       setError(blocksRes.error.message);
     } else if (unitsRes.error) {
       setError(unitsRes.error.message);
+    } else if (duesRulesRes.error) {
+      setError(duesRulesRes.error.message);
     } else {
       setBlocks((blocksRes.data ?? []) as Block[]);
       setUnits((unitsRes.data ?? []) as Unit[]);
+      const rulesMap: Record<string, DuesRule> = {};
+      for (const rule of (duesRulesRes.data ?? []) as DuesRule[]) {
+        if (rule.unit_id) rulesMap[rule.unit_id] = rule;
+      }
+      setDuesRulesByUnit(rulesMap);
     }
     setLoading(false);
   }, [selectedSiteId]);
@@ -145,25 +172,66 @@ export default function UnitsPage() {
     setShowUnitForm(true);
   }
 
+  // One active dues_rules row per unit is the whole model here (MVP —
+  // effective-dated rule history is schema-ready via dues_rules but not
+  // exposed in this UI yet): if the unit already has one, update its
+  // amount; otherwise insert a new row. Clearing the field back to empty
+  // deactivates the existing rule rather than leaving a stale amount.
+  async function upsertDuesRule(unitId: string, amountStr: string) {
+    if (!selectedSiteId) return;
+    const existing = duesRulesByUnit[unitId];
+    const amount = amountStr.trim() ? Number(amountStr) : null;
+
+    if (amount === null) {
+      if (existing) {
+        await supabase.from("dues_rules").update({ active: false }).eq("id", existing.id);
+      }
+      return;
+    }
+
+    if (existing) {
+      await supabase.from("dues_rules").update({ amount }).eq("id", existing.id);
+    } else {
+      await supabase.from("dues_rules").insert({
+        site_id: selectedSiteId,
+        unit_id: unitId,
+        name: "Aidat",
+        amount,
+        active: true,
+      });
+    }
+  }
+
   async function handleAddUnit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedSiteId || !unitForm.unit_number.trim()) return;
     setSavingUnit(true);
     setError(null);
-    const { error: insertError } = await supabase.from("units").insert({
-      site_id: selectedSiteId,
-      block_id: unitForm.block_id || null,
-      unit_number: unitForm.unit_number.trim(),
-      unit_type: unitForm.unit_type.trim() || null,
-      gross_sqm: unitForm.gross_sqm ? Number(unitForm.gross_sqm) : null,
-      net_sqm: unitForm.net_sqm ? Number(unitForm.net_sqm) : null,
-      active: true,
-    });
-    setSavingUnit(false);
-    if (insertError) {
-      setError(insertError.message);
+    const { data: inserted, error: insertError } = await supabase
+      .from("units")
+      .insert({
+        site_id: selectedSiteId,
+        block_id: unitForm.block_id || null,
+        unit_number: unitForm.unit_number.trim(),
+        unit_type: unitForm.unit_type.trim() || null,
+        gross_sqm: unitForm.gross_sqm ? Number(unitForm.gross_sqm) : null,
+        net_sqm: unitForm.net_sqm ? Number(unitForm.net_sqm) : null,
+        active: true,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !inserted) {
+      setSavingUnit(false);
+      setError(insertError?.message ?? "Daire kaydedilemedi.");
       return;
     }
+
+    if (unitForm.dues_amount.trim()) {
+      await upsertDuesRule(inserted.id, unitForm.dues_amount);
+    }
+
+    setSavingUnit(false);
     setUnitForm(EMPTY_UNIT_FORM);
     setShowUnitForm(false);
     await fetchAll();
@@ -171,12 +239,14 @@ export default function UnitsPage() {
 
   function startEditUnit(unit: Unit) {
     setEditingUnitId(unit.id);
+    const rule = duesRulesByUnit[unit.id];
     setEditForm({
       block_id: unit.block_id ?? "",
       unit_number: unit.unit_number,
       unit_type: unit.unit_type ?? "",
       gross_sqm: unit.gross_sqm != null ? String(unit.gross_sqm) : "",
       net_sqm: unit.net_sqm != null ? String(unit.net_sqm) : "",
+      dues_amount: rule ? String(rule.amount) : "",
     });
   }
 
@@ -199,11 +269,15 @@ export default function UnitsPage() {
         net_sqm: editForm.net_sqm ? Number(editForm.net_sqm) : null,
       })
       .eq("id", unitId);
-    setSavingEdit(false);
     if (updateError) {
+      setSavingEdit(false);
       setError(updateError.message);
       return;
     }
+
+    await upsertDuesRule(unitId, editForm.dues_amount);
+
+    setSavingEdit(false);
     cancelEditUnit();
     await fetchAll();
   }
@@ -371,6 +445,17 @@ export default function UnitsPage() {
                 onChange={(e) => setUnitForm((f) => ({ ...f, net_sqm: e.target.value }))}
               />
             </label>
+            <label className="auth-field">
+              <span>Aylık Aidat Tutarı</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={unitForm.dues_amount}
+                onChange={(e) => setUnitForm((f) => ({ ...f, dues_amount: e.target.value }))}
+                placeholder="örn. 1500"
+              />
+            </label>
             <div style={{ display: "flex", alignItems: "flex-end" }}>
               <button className="btn-primary" type="submit" disabled={savingUnit || !unitForm.unit_number.trim()}>
                 {savingUnit ? "Kaydediliyor…" : "Kaydet"}
@@ -391,6 +476,7 @@ export default function UnitsPage() {
                   <th>Tip</th>
                   <th className="num">Brüt m²</th>
                   <th className="num">Net m²</th>
+                  <th className="num">Aylık Aidat</th>
                   <th>Durum</th>
                   {canWrite && <th>Aksiyon</th>}
                 </tr>
@@ -444,6 +530,17 @@ export default function UnitsPage() {
                             style={{ width: 80 }}
                           />
                         </td>
+                        <td className="num">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editForm.dues_amount}
+                            onChange={(e) => setEditForm((f) => ({ ...f, dues_amount: e.target.value }))}
+                            style={{ width: 90 }}
+                            placeholder="—"
+                          />
+                        </td>
                         <td>
                           <span className={`pill ${unit.active ? "pill-green" : "pill-neutral"}`}>
                             {unit.active ? "Aktif" : "Pasif"}
@@ -471,6 +568,13 @@ export default function UnitsPage() {
                       <td className="wrap">{unit.unit_type ?? "—"}</td>
                       <td className="num">{unit.gross_sqm ?? "—"}</td>
                       <td className="num">{unit.net_sqm ?? "—"}</td>
+                      <td className="num">
+                        {duesRulesByUnit[unit.id] ? (
+                          formatCurrency(duesRulesByUnit[unit.id].amount)
+                        ) : (
+                          <span className="pill pill-amber">Tanımsız</span>
+                        )}
+                      </td>
                       <td>
                         <span className={`pill ${unit.active ? "pill-green" : "pill-neutral"}`}>
                           {unit.active ? "Aktif" : "Pasif"}

@@ -33,6 +33,10 @@ type UnitOption = {
   block_name: string | null;
 };
 
+function unitOptionLabel(u: UnitOption) {
+  return u.block_name ? `${u.block_name} — ${u.unit_number}` : u.unit_number;
+}
+
 type AccrualRow = {
   id: string;
   unit_id: string;
@@ -93,10 +97,15 @@ export default function DuesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Bulk generation
-  const [genAmount, setGenAmount] = useState("");
+  // Bulk generation — amount comes from each unit's own dues_rules row
+  // (site-wide default as fallback), set on the Daireler page; no more
+  // typing a single flat amount here.
+  const [unitRateById, setUnitRateById] = useState<Record<string, number>>({});
+  const [siteDefaultRate, setSiteDefaultRate] = useState<number | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [genResult, setGenResult] = useState<{ created: number; skipped: number } | null>(null);
+  const [genResult, setGenResult] = useState<{ created: number; alreadyExists: number; noRate: number } | null>(
+    null
+  );
 
   // Ad-hoc accrual form
   const [showAdhocForm, setShowAdhocForm] = useState(false);
@@ -132,18 +141,22 @@ export default function DuesPage() {
     const unitOptions = ((unitsRes.data ?? []) as unknown as RawUnitRow[]).map(normalizeUnitOption);
     setUnits(unitOptions);
 
-    // Default suggested amount from the site-wide dues_rules row, if one exists
-    // and the user hasn't typed anything yet.
+    // Per-unit dues amounts (set on the Daireler page) + a site-wide default
+    // rule (unit_id null) used as a fallback for any unit without its own.
     const rulesRes = await supabase
       .from("dues_rules")
-      .select("amount")
+      .select("unit_id, amount")
       .eq("site_id", selectedSiteId)
-      .is("unit_id", null)
-      .eq("active", true)
-      .limit(1)
-      .maybeSingle();
+      .eq("active", true);
     if (!rulesRes.error && rulesRes.data) {
-      setGenAmount((prev) => (prev ? prev : String(rulesRes.data!.amount)));
+      const perUnit: Record<string, number> = {};
+      let defaultRate: number | null = null;
+      for (const rule of rulesRes.data as { unit_id: string | null; amount: number }[]) {
+        if (rule.unit_id) perUnit[rule.unit_id] = rule.amount;
+        else defaultRate = rule.amount;
+      }
+      setUnitRateById(perUnit);
+      setSiteDefaultRate(defaultRate);
     }
 
     // Only look at accruals for the currently selected period. If no
@@ -194,14 +207,10 @@ export default function DuesPage() {
     fetchAll();
   }, [fetchAll]);
 
-  async function handleGenerate(e: React.FormEvent) {
-    e.preventDefault();
+  const unitsMissingRate = units.filter((u) => unitRateById[u.id] == null && siteDefaultRate == null);
+
+  async function handleGenerate() {
     if (!selectedSiteId || !user) return;
-    const amount = Number(genAmount);
-    if (!amount || amount <= 0) {
-      setError("Geçerli bir aidat tutarı girin.");
-      return;
-    }
 
     setGenerating(true);
     setError(null);
@@ -229,11 +238,17 @@ export default function DuesPage() {
       if (existingRes.error) throw existingRes.error;
 
       const existingUnitIds = new Set((existingRes.data ?? []).map((r) => r.unit_id as string));
-      const toInsert = units.filter((u) => !existingUnitIds.has(u.id));
-      const preSkipped = units.length - toInsert.length;
+      const candidates = units.filter((u) => !existingUnitIds.has(u.id));
+      const alreadyExists = units.length - candidates.length;
+
+      // Every candidate needs a rate — its own dues_rules row, or the
+      // site-wide default. Units with neither are skipped and reported by
+      // name so the user knows exactly which Daireler need a rate set.
+      const toInsert = candidates.filter((u) => unitRateById[u.id] != null || siteDefaultRate != null);
+      const noRate = candidates.length - toInsert.length;
 
       if (toInsert.length === 0) {
-        setGenResult({ created: 0, skipped: preSkipped });
+        setGenResult({ created: 0, alreadyExists, noRate });
         return;
       }
 
@@ -243,7 +258,7 @@ export default function DuesPage() {
         fiscal_period_id: fiscalPeriodId as string,
         accrual_type: "monthly_dues" as const,
         description: "Aylık Aidat",
-        amount,
+        amount: unitRateById[u.id] ?? (siteDefaultRate as number),
         accrual_date: todayIso(),
         created_by: user.id,
       }));
@@ -275,8 +290,7 @@ export default function DuesPage() {
         throw new Error(lastRowError);
       }
 
-      setGenResult({ created, skipped: preSkipped + extraSkipped });
-      setGenAmount(String(amount));
+      setGenResult({ created, alreadyExists: alreadyExists + extraSkipped, noRate });
       await fetchAll();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Tahakkuk oluşturulurken hata oluştu.");
@@ -375,32 +389,25 @@ export default function DuesPage() {
             <div className="panel-title">Aylık Aidat Tahakkuku</div>
           </div>
           <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>
-            Seçili dönem ({month}/{year}) için sitedeki tüm aktif dairelere tek tutarlı aylık aidat tahakkuku oluşturur.
-            Daha önce tahakkuk oluşturulmuş daireler otomatik olarak atlanır.
-            {/* Backlog: per-unit differentiated pricing via dues_rules(unit_id) — MVP uses a single flat amount. */}
+            Seçili dönem ({month}/{year}) için sitedeki tüm aktif dairelere, her dairenin{" "}
+            <strong>Daireler</strong> sayfasında tanımlı kendi aylık aidat tutarıyla tahakkuk oluşturur. Daha önce
+            tahakkuk oluşturulmuş daireler otomatik olarak atlanır.
           </p>
-          <form onSubmit={handleGenerate} className="form-grid">
-            <label className="auth-field">
-              <span>Aylık Aidat Tutarı</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={genAmount}
-                onChange={(e) => setGenAmount(e.target.value)}
-                required
-                placeholder="örn. 1500"
-              />
-            </label>
-            <div style={{ display: "flex", alignItems: "flex-end" }}>
-              <button className="btn-primary" type="submit" disabled={generating || !genAmount}>
-                {generating ? "Oluşturuluyor…" : "Bu Ay İçin Aidat Tahakkuku Oluştur"}
-              </button>
+          {unitsMissingRate.length > 0 && (
+            <div className="auth-error" style={{ marginBottom: 16 }}>
+              {unitsMissingRate.length} dairenin aidat tutarı tanımlı değil ({unitsMissingRate.map(unitOptionLabel).join(", ")}).
+              Tahakkuk oluşturmadan önce <strong>Daireler</strong> sayfasından tutarlarını girin, ya da bu daireler
+              atlanarak devam edin.
             </div>
-          </form>
+          )}
+          <button className="btn-primary" onClick={handleGenerate} disabled={generating || units.length === 0}>
+            {generating ? "Oluşturuluyor…" : "Bu Ay İçin Aidat Tahakkuku Oluştur"}
+          </button>
           {genResult && (
             <div className="auth-info" style={{ marginTop: 12 }}>
-              {genResult.created} daire için tahakkuk oluşturuldu, {genResult.skipped} daire zaten tahakkuklandığı için atlandı.
+              {genResult.created} daire için tahakkuk oluşturuldu, {genResult.alreadyExists} daire zaten
+              tahakkuklandığı için atlandı
+              {genResult.noRate > 0 && `, ${genResult.noRate} dairenin aidat tutarı tanımlı olmadığı için atlandı`}.
             </div>
           )}
         </div>
