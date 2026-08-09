@@ -6,6 +6,9 @@ import Link from "next/link";
 import { KpiProvider, useKpi } from "@/lib/kpiContext";
 import { supabase } from "@/lib/supabase";
 import BrandMark from "@/components/BrandMark";
+import { useLang, t as pick } from "@/lib/i18n";
+
+const MODULE_TITLE = { tr: "Performans Yönetim Sistemi", en: "Performance Management" };
 
 const NAV_ITEMS = [
   { href: "/kpi-tracker", label: "Dashboard" },
@@ -141,6 +144,7 @@ function NotificationBell({ memberId }: { memberId: string }) {
 }
 
 function KpiTopBar({ memberId }: { memberId: string | null }) {
+  const { lang } = useLang();
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = "/";
@@ -150,7 +154,7 @@ function KpiTopBar({ memberId }: { memberId: string | null }) {
       <Link href="/" className="nav-brand">
         <BrandMark />
       </Link>
-      <span className="aidat-topbar-title">KPI Tracker</span>
+      <span className="aidat-topbar-title">{pick(lang, MODULE_TITLE)}</span>
       <div className="aidat-topbar-right">
         {memberId && <NotificationBell memberId={memberId} />}
         <button className="aidat-logout-btn" onClick={handleLogout}>Çıkış</button>

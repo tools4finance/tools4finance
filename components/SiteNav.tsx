@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import BrandMark from "@/components/BrandMark";
+import { useLang, t as pick } from "@/lib/i18n";
 
 const STRINGS = {
   tr: { contact: "İletişim", signin: "Giriş yap", panel: "Panele git" },
@@ -11,16 +12,13 @@ const STRINGS = {
 };
 
 export default function SiteNav() {
-  const [lang, setLang] = useState<"tr" | "en">("tr");
+  const { lang, setLang } = useLang();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    const savedLang = (localStorage.getItem("t4f_lang") as "tr" | "en") || "tr";
     const savedTheme = (localStorage.getItem("t4f_theme") as "light" | "dark") || "light";
-    setLang(savedLang);
     setTheme(savedTheme);
-    document.documentElement.lang = savedLang;
     document.documentElement.dataset.theme = savedTheme;
 
     supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
@@ -30,12 +28,6 @@ export default function SiteNav() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  function changeLang(next: "tr" | "en") {
-    setLang(next);
-    document.documentElement.lang = next;
-    localStorage.setItem("t4f_lang", next);
-  }
-
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
@@ -43,7 +35,7 @@ export default function SiteNav() {
     localStorage.setItem("t4f_theme", next);
   }
 
-  const t = STRINGS[lang];
+  const strings = pick(lang, STRINGS);
 
   return (
     <nav className="site-nav">
@@ -51,14 +43,14 @@ export default function SiteNav() {
         <BrandMark />
       </Link>
       <div className="nav-links">
-        <Link className="nav-link" href="/contact.html">{t.contact}</Link>
+        <Link className="nav-link" href="/contact.html">{strings.contact}</Link>
         <div className="lang-toggle">
-          <button className={`lang-btn${lang === "tr" ? " active" : ""}`} onClick={() => changeLang("tr")}>TR</button>
-          <button className={`lang-btn${lang === "en" ? " active" : ""}`} onClick={() => changeLang("en")}>EN</button>
+          <button className={`lang-btn${lang === "tr" ? " active" : ""}`} onClick={() => setLang("tr")}>TR</button>
+          <button className={`lang-btn${lang === "en" ? " active" : ""}`} onClick={() => setLang("en")}>EN</button>
         </div>
         <button className="theme-toggle" aria-label="Tema değiştir" onClick={toggleTheme} />
         <Link className="nav-login-btn" href={signedIn ? "/aidat" : "/login"}>
-          {signedIn ? t.panel : t.signin}
+          {signedIn ? strings.panel : strings.signin}
         </Link>
       </div>
     </nav>

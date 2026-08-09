@@ -6,6 +6,9 @@ import Link from "next/link";
 import { AidatProvider, useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import BrandMark from "@/components/BrandMark";
+import { useLang, t as pick } from "@/lib/i18n";
+
+const MODULE_TITLE = { tr: "Site Bütçe Yönetimi", en: "Site Budget Management" };
 
 const NAV_ITEMS = [
   { href: "/aidat", label: "Dashboard" },
@@ -167,6 +170,7 @@ function AidatTopBar({
   siteSwitcher?: React.ReactNode;
   onAddSite?: () => void;
 }) {
+  const { lang } = useLang();
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = "/";
@@ -176,7 +180,7 @@ function AidatTopBar({
       <Link href="/" className="nav-brand">
         <BrandMark />
       </Link>
-      <span className="aidat-topbar-title">Site Bütçe Yönetimi</span>
+      <span className="aidat-topbar-title">{pick(lang, MODULE_TITLE)}</span>
       <div className="aidat-topbar-right">
         {!minimal && siteSwitcher}
         {!minimal && onAddSite && (

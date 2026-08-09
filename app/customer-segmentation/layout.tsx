@@ -5,6 +5,9 @@ import Link from "next/link";
 import { CsProvider, useCs } from "@/lib/csContext";
 import { supabase } from "@/lib/supabase";
 import BrandMark from "@/components/BrandMark";
+import { useLang, t as pick } from "@/lib/i18n";
+
+const MODULE_TITLE = { tr: "Müşteri Risk Skoru", en: "Customer Credit Score" };
 
 const NAV_ITEMS = [
   { href: "/customer-segmentation", label: "Dashboard" },
@@ -14,6 +17,7 @@ const NAV_ITEMS = [
 ];
 
 function CsTopBar() {
+  const { lang } = useLang();
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = "/";
@@ -23,7 +27,7 @@ function CsTopBar() {
       <Link href="/" className="nav-brand">
         <BrandMark />
       </Link>
-      <span className="aidat-topbar-title">Customer Segmentation</span>
+      <span className="aidat-topbar-title">{pick(lang, MODULE_TITLE)}</span>
       <div className="aidat-topbar-right">
         <button className="aidat-logout-btn" onClick={handleLogout}>Çıkış</button>
       </div>

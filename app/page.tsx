@@ -1,24 +1,95 @@
+"use client";
+
 import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
+import { useLang, t as pick } from "@/lib/i18n";
+
+const STRINGS = {
+  tr: {
+    eyebrow: "Finans Ekipleri İçin Araç Seti",
+    heroTitle1: "Finans ekibinizin ",
+    heroTitleEm: "günlük işini",
+    heroTitle2: "hızlandıran araçlar.",
+    heroSub:
+      "IFRS raporlamadan mutabakata, site/bina bütçe yönetiminden finansal analize — her araç gerçek muhasebe mantığıyla, denetim standardında çalışır.",
+    live: "Aktif",
+    soon: "Yakında",
+    ifrsName: "IFRS Reporting",
+    ifrsDesc:
+      "VUK mizanından IFRS finansal tablolara — AJE, RJE, ertelenmiş vergi otomasyonu ile çalışan Working Trial Balance platformu.",
+    aidatName: "Site Bütçe Yönetimi",
+    aidatDesc:
+      "Aidat tahakkuku, tahsilat, cari hesap, gider/gelir ve bütçe takibini tek panelde yönetin — mobilden de kullanılabilir.",
+    csName: "Müşteri Risk Skoru",
+    csDesc:
+      "Müşterilerinizi risk sınıfı, vade gecikmesi, ödeme alışkanlığı ve stratejik önem gibi kriterlerle puanlayın — tüm ağırlıklar ve eşikler size özel, tamamen düzenlenebilir.",
+    kpiName: "Performans Yönetim Sistemi",
+    kpiDesc:
+      "Şirket ve bireysel hedefleri tek yerde toplayın — ağırlıklandırılmış hedef girişi, kişi/yönetici yorumları ve otomatik skor hesaplama ile basit bir performans yönetim sistemi.",
+    bridgeName: "Bridge",
+    bridgeDesc:
+      "İki sistem arası mutabakatı otomatikleştirin. ERP, banka ekstresi ve kebir verisini eşleştirip farkları anında raporlayın.",
+    graphName: "Graph",
+    graphDesc:
+      "Finansal verinizi etkileşimli panolara dönüştürün. Trend analizi, varyans karşılaştırması ve yönetim raporları tek ekranda.",
+    bottomTitle: "Finans ekibiniz için doğru aracı seçin",
+    bottomSub: "IFRS Reporting ile başlayın ya da Site Bütçe Yönetimi ile aidat/bütçe takibinizi dijitalleştirin.",
+    bottomCta: "Site Bütçe Yönetimi'ni incele",
+    contact: "İletişim",
+  },
+  en: {
+    eyebrow: "A Toolkit For Finance Teams",
+    heroTitle1: "Tools that speed up your ",
+    heroTitleEm: "finance team's daily work",
+    heroTitle2: ".",
+    heroSub:
+      "From IFRS reporting to reconciliation, from building/site budget management to financial analysis — every tool runs on real accounting logic, at audit standard.",
+    live: "Live",
+    soon: "Coming soon",
+    ifrsName: "IFRS Reporting",
+    ifrsDesc:
+      "From a statutory trial balance to IFRS financial statements — a Working Trial Balance platform with AJE, RJE and deferred tax automation.",
+    aidatName: "Site Budget Management",
+    aidatDesc:
+      "Manage dues accrual, collections, current account, expenses/income and budgets in one panel — usable from mobile too.",
+    csName: "Customer Credit Score",
+    csDesc:
+      "Score your customers on criteria like risk class, overdue days, payment habits and strategic importance — every weight and threshold is fully yours to configure.",
+    kpiName: "Performance Management",
+    kpiDesc:
+      "Bring company and individual goals into one place — weighted goal entry, self/manager comments, and automatic score calculation in a simple performance management system.",
+    bridgeName: "Bridge",
+    bridgeDesc:
+      "Automate reconciliation between two systems. Match ERP, bank statement and ledger data and report differences instantly.",
+    graphName: "Graph",
+    graphDesc:
+      "Turn your financial data into interactive dashboards. Trend analysis, variance comparison and management reports on one screen.",
+    bottomTitle: "Choose the right tool for your finance team",
+    bottomSub: "Start with IFRS Reporting, or digitize your dues/budget tracking with Site Budget Management.",
+    bottomCta: "Explore Site Budget Management",
+    contact: "Contact",
+  },
+};
 
 export default function HomePage() {
+  const { lang } = useLang();
+  const s = pick(lang, STRINGS);
+
   return (
     <>
       <SiteNav />
 
       <section className="hero">
         <div className="hero-eyebrow">
-          <span></span> Finans Ekipleri İçin Araç Seti
+          <span></span> {s.eyebrow}
         </div>
         <h1 className="hero-title">
-          Finans ekibinizin <em>günlük işini</em>
+          {s.heroTitle1}
+          <em>{s.heroTitleEm}</em>
           <br />
-          hızlandıran araçlar.
+          {s.heroTitle2}
         </h1>
-        <p className="hero-sub">
-          IFRS raporlamadan mutabakata, site/bina bütçe yönetiminden finansal analize —
-          her araç gerçek muhasebe mantığıyla, denetim standardında çalışır.
-        </p>
+        <p className="hero-sub">{s.heroSub}</p>
       </section>
 
       <section className="products-section">
@@ -33,14 +104,11 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div className="product-name">IFRS Reporting</div>
-              <div className="product-desc">
-                VUK mizanından IFRS finansal tablolara — AJE, RJE, ertelenmiş vergi otomasyonu ile
-                çalışan Working Trial Balance platformu.
-              </div>
+              <div className="product-name">{s.ifrsName}</div>
+              <div className="product-desc">{s.ifrsDesc}</div>
             </div>
             <div className="product-footer">
-              <span className="product-status status-live">Aktif</span>
+              <span className="product-status status-live">{s.live}</span>
               <span className="product-arrow">→</span>
             </div>
           </Link>
@@ -52,14 +120,11 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div className="product-name">Site Bütçe Yönetimi</div>
-              <div className="product-desc">
-                Aidat tahakkuku, tahsilat, cari hesap, gider/gelir ve bütçe takibini tek panelde
-                yönetin — mobilden de kullanılabilir.
-              </div>
+              <div className="product-name">{s.aidatName}</div>
+              <div className="product-desc">{s.aidatDesc}</div>
             </div>
             <div className="product-footer">
-              <span className="product-status status-live">Aktif</span>
+              <span className="product-status status-live">{s.live}</span>
               <span className="product-arrow">→</span>
             </div>
           </Link>
@@ -74,14 +139,11 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div className="product-name">Customer Segmentation</div>
-              <div className="product-desc">
-                Müşterilerinizi risk sınıfı, vade gecikmesi, ödeme alışkanlığı ve stratejik önem gibi
-                kriterlerle puanlayın — tüm ağırlıklar ve eşikler size özel, tamamen düzenlenebilir.
-              </div>
+              <div className="product-name">{s.csName}</div>
+              <div className="product-desc">{s.csDesc}</div>
             </div>
             <div className="product-footer">
-              <span className="product-status status-live">Aktif</span>
+              <span className="product-status status-live">{s.live}</span>
               <span className="product-arrow">→</span>
             </div>
           </Link>
@@ -95,14 +157,11 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div className="product-name">KPI Tracker</div>
-              <div className="product-desc">
-                Şirket ve bireysel hedefleri tek yerde toplayın — ağırlıklandırılmış hedef girişi, kişi/yönetici
-                yorumları ve otomatik skor hesaplama ile basit bir performans yönetim sistemi.
-              </div>
+              <div className="product-name">{s.kpiName}</div>
+              <div className="product-desc">{s.kpiDesc}</div>
             </div>
             <div className="product-footer">
-              <span className="product-status status-live">Aktif</span>
+              <span className="product-status status-live">{s.live}</span>
               <span className="product-arrow">→</span>
             </div>
           </Link>
@@ -117,14 +176,11 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div className="product-name">Bridge</div>
-              <div className="product-desc">
-                İki sistem arası mutabakatı otomatikleştirin. ERP, banka ekstresi ve kebir verisini
-                eşleştirip farkları anında raporlayın.
-              </div>
+              <div className="product-name">{s.bridgeName}</div>
+              <div className="product-desc">{s.bridgeDesc}</div>
             </div>
             <div className="product-footer">
-              <span className="product-status status-soon">Yakında</span>
+              <span className="product-status status-soon">{s.soon}</span>
               <span className="product-arrow">→</span>
             </div>
           </Link>
@@ -136,14 +192,11 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div className="product-name">Graph</div>
-              <div className="product-desc">
-                Finansal verinizi etkileşimli panolara dönüştürün. Trend analizi, varyans
-                karşılaştırması ve yönetim raporları tek ekranda.
-              </div>
+              <div className="product-name">{s.graphName}</div>
+              <div className="product-desc">{s.graphDesc}</div>
             </div>
             <div className="product-footer">
-              <span className="product-status status-soon">Yakında</span>
+              <span className="product-status status-soon">{s.soon}</span>
               <span className="product-arrow">→</span>
             </div>
           </Link>
@@ -151,15 +204,15 @@ export default function HomePage() {
       </section>
 
       <section className="bottom-section">
-        <h2>Finans ekibiniz için doğru aracı seçin</h2>
-        <p>IFRS Reporting ile başlayın ya da Site Bütçe Yönetimi ile aidat/bütçe takibinizi dijitalleştirin.</p>
-        <Link className="btn-primary" href="/aidat">Site Bütçe Yönetimi&apos;ni incele</Link>
+        <h2>{s.bottomTitle}</h2>
+        <p>{s.bottomSub}</p>
+        <Link className="btn-primary" href="/aidat">{s.bottomCta}</Link>
       </section>
 
       <footer className="site-footer">
         <span className="footer-left">tools4finance</span>
         <div className="footer-links">
-          <Link href="/contact.html">İletişim</Link>
+          <Link href="/contact.html">{s.contact}</Link>
         </div>
       </footer>
     </>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, DM_Mono } from "next/font/google";
+import { LangProvider } from "@/lib/i18n";
 import "./globals.css";
 
 const inter = Inter({
@@ -40,7 +41,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="tr" data-theme="light" suppressHydrationWarning>
-      <body className={`${inter.variable} ${dmMono.variable}`}>{children}</body>
+      <body className={`${inter.variable} ${dmMono.variable}`}>
+        <LangProvider>{children}</LangProvider>
+      </body>
     </html>
   );
 }
