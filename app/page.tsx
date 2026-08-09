@@ -86,6 +86,27 @@ export default function HomePage() {
             </div>
           </Link>
 
+          <Link className="product-card" href="/kpi-tracker">
+            <div className="product-icon icon-blue">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <circle cx="10" cy="10" r="7.5" />
+                <circle cx="10" cy="10" r="4" />
+                <circle cx="10" cy="10" r="0.8" fill="currentColor" />
+              </svg>
+            </div>
+            <div>
+              <div className="product-name">KPI Tracker</div>
+              <div className="product-desc">
+                Şirket ve bireysel hedefleri tek yerde toplayın — ağırlıklandırılmış hedef girişi, kişi/yönetici
+                yorumları ve otomatik skor hesaplama ile basit bir performans yönetim sistemi.
+              </div>
+            </div>
+            <div className="product-footer">
+              <span className="product-status status-live">Aktif</span>
+              <span className="product-arrow">→</span>
+            </div>
+          </Link>
+
           <Link className="product-card" href="/bridge/index.html">
             <div className="product-icon icon-purple">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4">
