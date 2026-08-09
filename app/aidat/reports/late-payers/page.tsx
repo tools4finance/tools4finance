@@ -71,6 +71,10 @@ export default function LatePayersPage() {
   const [lateness, setLateness] = useState<LatenessRow[]>([]);
   const [hasAnyAccrualHistory, setHasAnyAccrualHistory] = useState(false);
 
+  const [filterUnitId, setFilterUnitId] = useState("");
+  const [filterUnitSearch, setFilterUnitSearch] = useState("");
+  const [filterUnitPickerOpen, setFilterUnitPickerOpen] = useState(false);
+
   const fetchAll = useCallback(async () => {
     if (!selectedSiteId) return;
     setLoading(true);
@@ -267,6 +271,16 @@ export default function LatePayersPage() {
     return <div className="empty-state">Yükleniyor…</div>;
   }
 
+  const allUnits = Object.values(unitsById).sort((a, b) => unitLabel(a).localeCompare(unitLabel(b), "tr"));
+  const filteredUnitOptions = (() => {
+    const q = filterUnitSearch.trim().toLocaleLowerCase("tr");
+    if (!q) return allUnits;
+    return allUnits.filter((u) => unitLabel(u).toLocaleLowerCase("tr").includes(q));
+  })();
+
+  const visibleOutstanding = filterUnitId ? outstanding.filter((r) => r.unit_id === filterUnitId) : outstanding;
+  const visibleLateness = filterUnitId ? lateness.filter((r) => r.unit_id === filterUnitId) : lateness;
+
   const showEmptyState = outstanding.length === 0 && !hasAnyAccrualHistory;
 
   // Rows here only exist for units with >=1 monthly_dues accrual in the
@@ -291,10 +305,79 @@ export default function LatePayersPage() {
         <>
           <div className="panel">
             <div className="panel-header">
+              <div className="panel-title">Daire Filtresi</div>
+              {filterUnitId && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    setFilterUnitId("");
+                    setFilterUnitSearch("");
+                  }}
+                >
+                  Filtreyi Temizle
+                </button>
+              )}
+            </div>
+            <label className="auth-field" style={{ position: "relative", maxWidth: 320 }}>
+              <span>Daire</span>
+              <input
+                type="text"
+                value={filterUnitSearch}
+                placeholder="Blok veya daire no yazın…"
+                onFocus={() => setFilterUnitPickerOpen(true)}
+                onChange={(e) => {
+                  setFilterUnitSearch(e.target.value);
+                  setFilterUnitPickerOpen(true);
+                  if (filterUnitId) setFilterUnitId("");
+                }}
+                onBlur={() => setTimeout(() => setFilterUnitPickerOpen(false), 150)}
+              />
+              {filterUnitPickerOpen && (
+                <div className="unit-picker-dropdown">
+                  <button
+                    type="button"
+                    className="unit-picker-item"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setFilterUnitId("");
+                      setFilterUnitSearch("");
+                      setFilterUnitPickerOpen(false);
+                    }}
+                  >
+                    Tüm daireler
+                  </button>
+                  {filteredUnitOptions.length === 0 ? (
+                    <div className="unit-picker-empty">Eşleşen daire yok.</div>
+                  ) : (
+                    filteredUnitOptions.map((u) => (
+                      <button
+                        type="button"
+                        key={u.id}
+                        className="unit-picker-item"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setFilterUnitId(u.id);
+                          setFilterUnitSearch(unitLabel(u));
+                          setFilterUnitPickerOpen(false);
+                        }}
+                      >
+                        {unitLabel(u)}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </label>
+          </div>
+
+          <div className="panel">
+            <div className="panel-header">
               <div className="panel-title">Güncel Borçlu Daireler</div>
             </div>
-            {outstanding.length === 0 ? (
-              <div className="empty-state">Şu anda borçlu daire bulunmuyor.</div>
+            {visibleOutstanding.length === 0 ? (
+              <div className="empty-state">
+                {filterUnitId ? "Bu daire için borç kaydı yok." : "Şu anda borçlu daire bulunmuyor."}
+              </div>
             ) : (
               <div className="table-scroll">
                 <table className="data-table">
@@ -306,7 +389,7 @@ export default function LatePayersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {outstanding.map((row) => (
+                    {visibleOutstanding.map((row) => (
                       <tr key={row.unit_id}>
                         <td>{unitLabel(unitsById[row.unit_id])}</td>
                         <td className="num">
@@ -331,8 +414,12 @@ export default function LatePayersPage() {
               biriken tutarın tahakkuk tutarına ulaştığı ödeme tarihi &quot;ödeme tarihi&quot; olarak kabul
               edilir (basit &quot;son ödeme tarihi&quot; yaklaşımı yerine).
             </p>
-            {lateness.length === 0 ? (
-              <div className="empty-state">Son 12 ayda aylık aidat tahakkuku bulunan daire yok.</div>
+            {visibleLateness.length === 0 ? (
+              <div className="empty-state">
+                {filterUnitId
+                  ? "Bu daire için son 12 ayda aylık aidat tahakkuku yok."
+                  : "Son 12 ayda aylık aidat tahakkuku bulunan daire yok."}
+              </div>
             ) : (
               <div className="table-scroll">
                 <table className="data-table">
@@ -344,12 +431,12 @@ export default function LatePayersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {lateness.map((row) => (
+                    {visibleLateness.map((row) => (
                       <tr key={row.unit_id}>
                         <td>{unitLabel(unitsById[row.unit_id])}</td>
                         <td className="num">
                           <span className={`pill ${lateCountPillClass(row.lateCount)}`}>
-                            {row.lateCount} / {row.totalCount}
+                            {row.lateCount} kez
                           </span>
                         </td>
                         <td>{row.mostRecentLateDate ? formatDate(row.mostRecentLateDate) : "—"}</td>
