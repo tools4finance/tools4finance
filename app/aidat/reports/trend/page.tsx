@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 const currency = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
@@ -290,6 +291,46 @@ export default function TrendReportPage() {
     ? `${MONTH_NAMES[rangeMonths[0].month - 1]} ${rangeMonths[0].year}`
     : `${MONTH_NAMES[rangeMonths[0].month - 1]} ${rangeMonths[0].year} — ${MONTH_NAMES[rangeMonths[rangeMonths.length - 1].month - 1]} ${rangeMonths[rangeMonths.length - 1].year}`;
 
+  const trendExportRows = monthRows.map((row) => {
+    const collectionRate = row.accrued > 0 ? (row.collected / row.accrued) * 100 : null;
+    return {
+      period: `${MONTH_NAMES[row.month - 1]} ${row.year}`,
+      accrued: row.accrued,
+      collected: row.collected,
+      collectionRate: collectionRate === null ? "—" : formatPercent(collectionRate),
+      opex: row.opex,
+      capex: row.capex,
+      result: row.result,
+    };
+  });
+
+  const trendExportColumns: ExportColumn[] = [
+    { header: "Dönem", value: (row) => row.period as string },
+    { header: "Aidat Tahakkuku", value: (row) => row.accrued as number },
+    { header: "Tahsilat", value: (row) => row.collected as number },
+    { header: "Tahsilat Oranı", value: (row) => row.collectionRate as string },
+    { header: "Gider (OPEX)", value: (row) => row.opex as number },
+    { header: "Gider (CAPEX)", value: (row) => row.capex as number },
+    { header: "Faaliyet Fazlası/Açığı", value: (row) => row.result as number },
+  ];
+
+  function handleExportTrendExcel() {
+    if (trendExportRows.length === 0) return;
+    exportRowsToExcel(trendExportRows, trendExportColumns, {
+      title: "Trend Analizi",
+      subtitle: rangeLabel,
+      sheetName: "Trend",
+    });
+  }
+
+  function handleExportTrendPdf() {
+    if (trendExportRows.length === 0) return;
+    exportRowsToPdf(trendExportRows, trendExportColumns, {
+      title: "Trend Analizi",
+      subtitle: rangeLabel,
+    });
+  }
+
   return (
     <div>
       {error && <div className="auth-error" style={{ marginBottom: 16 }}>{error}</div>}
@@ -350,6 +391,24 @@ export default function TrendReportPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Aylık Karşılaştırma — {rangeLabel}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={trendExportRows.length === 0}
+              onClick={handleExportTrendExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={trendExportRows.length === 0}
+              onClick={handleExportTrendPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
         <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 12 }}>
           Faaliyet Fazlası/Açığı = Aidat Tahakkuku − Toplam Gider (OPEX). CAPEX ve diğer gelir/gider kalemleri bu

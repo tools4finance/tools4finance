@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 type Resident = {
   id: string;
@@ -542,6 +543,33 @@ export default function ResidentsPage() {
   const warningCount = parsedRows.filter((r) => r.status === "warning").length;
   const skipCount = parsedRows.filter((r) => r.status === "skip").length;
 
+  function buildResidentsExportColumns(): ExportColumn[] {
+    return [
+      {
+        header: "Ad Soyad",
+        value: (row) => {
+          const r = row as unknown as Resident;
+          return `${r.first_name} ${r.last_name}`;
+        },
+      },
+      { header: "Telefon", value: (row) => (row as unknown as Resident).phone ?? "—" },
+      { header: "E-posta", value: (row) => (row as unknown as Resident).email ?? "—" },
+      { header: "Durum", value: (row) => ((row as unknown as Resident).active ? "Aktif" : "Pasif") },
+    ];
+  }
+
+  function handleExportResidentsExcel() {
+    exportRowsToExcel(residents as unknown as Record<string, unknown>[], buildResidentsExportColumns(), {
+      title: "Sakinler",
+    });
+  }
+
+  function handleExportResidentsPdf() {
+    exportRowsToPdf(residents as unknown as Record<string, unknown>[], buildResidentsExportColumns(), {
+      title: "Sakinler",
+    });
+  }
+
   return (
     <div>
       {canWrite && (
@@ -667,6 +695,24 @@ export default function ResidentsPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Sakinler</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={residents.length === 0}
+              onClick={handleExportResidentsExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={residents.length === 0}
+              onClick={handleExportResidentsPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
 
         {canWrite && (

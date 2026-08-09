@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 type OpexCapex = "OPEX" | "CAPEX";
 
@@ -268,6 +269,54 @@ export default function ExpensesPage() {
     setShowVendorForm(false);
   }
 
+  const periodLabel = `${month}/${year}`;
+
+  const expenseExportRows = useMemo(
+    () =>
+      expenses.map((expense) => {
+        const cat = categoriesById.get(expense.expense_category_id);
+        const vendor = expense.vendor_id ? vendorsById.get(expense.vendor_id) : undefined;
+        return {
+          date: expense.expense_date,
+          category: cat ? `${cat.main_segment} / ${cat.sub_segment} / ${cat.name}` : "—",
+          type: cat ? cat.opex_capex : "—",
+          amount: expense.amount,
+          vendor: vendor ? vendor.name : "—",
+          status:
+            expense.status === "active"
+              ? "Aktif"
+              : `İptal${expense.voided_reason ? ` (${expense.voided_reason})` : ""}`,
+        };
+      }),
+    [expenses, categoriesById, vendorsById]
+  );
+
+  const expenseExportColumns: ExportColumn[] = [
+    { header: "Tarih", value: (row) => row.date as string },
+    { header: "Gider Kalemi", value: (row) => row.category as string },
+    { header: "Tür", value: (row) => row.type as string },
+    { header: "Tutar", value: (row) => row.amount as number },
+    { header: "Tedarikçi", value: (row) => row.vendor as string },
+    { header: "Durum", value: (row) => row.status as string },
+  ];
+
+  function handleExportExpensesExcel() {
+    if (expenseExportRows.length === 0) return;
+    exportRowsToExcel(expenseExportRows, expenseExportColumns, {
+      title: "Giderler",
+      subtitle: periodLabel,
+      sheetName: "Giderler",
+    });
+  }
+
+  function handleExportExpensesPdf() {
+    if (expenseExportRows.length === 0) return;
+    exportRowsToPdf(expenseExportRows, expenseExportColumns, {
+      title: "Giderler",
+      subtitle: periodLabel,
+    });
+  }
+
   const activeExpenses = expenses.filter((e) => e.status === "active");
   const totalOpex = activeExpenses.reduce((sum, e) => {
     const cat = categoriesById.get(e.expense_category_id);
@@ -411,6 +460,24 @@ export default function ExpensesPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Giderler</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={expenseExportRows.length === 0}
+              onClick={handleExportExpensesExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={expenseExportRows.length === 0}
+              onClick={handleExportExpensesPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
 
         {loading ? (

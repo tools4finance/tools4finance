@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 type ExpenseCategory = {
   id: string;
@@ -182,6 +183,84 @@ export default function BudgetPage() {
     [incomeValues]
   );
 
+  const periodLabel = `${month}/${year}`;
+
+  const expenseExportRows = useMemo(
+    () =>
+      expenseCategories
+        .map((cat) => ({ cat, amount: parseFloat(expenseValues[cat.id] ?? "") || 0 }))
+        .filter(({ amount }) => amount > 0)
+        .map(({ cat, amount }) => ({
+          segment: cat.main_segment || "—",
+          subSegment: cat.sub_segment ?? "—",
+          category: cat.name,
+          type: cat.opex_capex ?? "—",
+          amount,
+        })),
+    [expenseCategories, expenseValues]
+  );
+
+  const incomeExportRows = useMemo(
+    () =>
+      incomeCategories
+        .map((cat) => ({ cat, amount: parseFloat(incomeValues[cat.id] ?? "") || 0 }))
+        .filter(({ amount }) => amount > 0)
+        .map(({ cat, amount }) => ({
+          group: cat.group_name || "—",
+          category: cat.name,
+          amount,
+        })),
+    [incomeCategories, incomeValues]
+  );
+
+  const expenseExportColumns: ExportColumn[] = [
+    { header: "Ana Segment", value: (row) => row.segment as string },
+    { header: "Alt Segment", value: (row) => row.subSegment as string },
+    { header: "Kategori", value: (row) => row.category as string },
+    { header: "Tür", value: (row) => row.type as string },
+    { header: "Bütçe Tutarı", value: (row) => row.amount as number },
+  ];
+
+  const incomeExportColumns: ExportColumn[] = [
+    { header: "Grup", value: (row) => row.group as string },
+    { header: "Kategori", value: (row) => row.category as string },
+    { header: "Bütçe Tutarı", value: (row) => row.amount as number },
+  ];
+
+  function handleExportExpenseBudgetExcel() {
+    if (expenseExportRows.length === 0) return;
+    exportRowsToExcel(expenseExportRows, expenseExportColumns, {
+      title: "Bütçe (Gider)",
+      subtitle: periodLabel,
+      sheetName: "Gider Bütçesi",
+    });
+  }
+
+  function handleExportExpenseBudgetPdf() {
+    if (expenseExportRows.length === 0) return;
+    exportRowsToPdf(expenseExportRows, expenseExportColumns, {
+      title: "Bütçe (Gider)",
+      subtitle: periodLabel,
+    });
+  }
+
+  function handleExportIncomeBudgetExcel() {
+    if (incomeExportRows.length === 0) return;
+    exportRowsToExcel(incomeExportRows, incomeExportColumns, {
+      title: "Bütçe (Gelir)",
+      subtitle: periodLabel,
+      sheetName: "Gelir Bütçesi",
+    });
+  }
+
+  function handleExportIncomeBudgetPdf() {
+    if (incomeExportRows.length === 0) return;
+    exportRowsToPdf(incomeExportRows, incomeExportColumns, {
+      title: "Bütçe (Gelir)",
+      subtitle: periodLabel,
+    });
+  }
+
   function segmentBudgetedCount(items: ExpenseCategory[]): number {
     return items.filter((c) => (parseFloat(expenseValues[c.id] ?? "") || 0) > 0).length;
   }
@@ -286,6 +365,24 @@ export default function BudgetPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Gider Bütçesi</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={expenseExportRows.length === 0}
+              onClick={handleExportExpenseBudgetExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={expenseExportRows.length === 0}
+              onClick={handleExportExpenseBudgetPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
 
         {expenseGroups.length === 0 ? (
@@ -371,6 +468,24 @@ export default function BudgetPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Gelir Bütçesi</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={incomeExportRows.length === 0}
+              onClick={handleExportIncomeBudgetExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={incomeExportRows.length === 0}
+              onClick={handleExportIncomeBudgetPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
 
         {incomeGroups.length === 0 ? (

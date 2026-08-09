@@ -258,7 +258,7 @@ table.data-table th { text-align: left; font-size: 11px; text-transform: upperca
 table.data-table td { padding: 10px 14px; border-top: 0.5px solid var(--border); color: var(--text); white-space: nowrap; }
 table.data-table tbody tr:hover { background: var(--bg2); }
 table.data-table td.wrap { white-space: normal; }
-table.data-table td.num, table.data-table th.num { text-align: right; font-family: var(--font-dm-mono), monospace; }
+table.data-table td.num, table.data-table th.num { text-align: right; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px; }
 

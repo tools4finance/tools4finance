@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 const currency = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
@@ -363,6 +364,90 @@ export default function ComparisonReportPage() {
   const resultColor = (v: number) => (v >= 0 ? "var(--green)" : "var(--coral)");
   const strongCell = (content: React.ReactNode) => <strong>{content}</strong>;
 
+  // Column-per-period export shape, mirroring the on-screen tables exactly:
+  // one export row per line item, one export column per selected period.
+  function periodKey(p: PeriodTotals): string {
+    return `${p.year}-${p.month}`;
+  }
+
+  function makeExportRow(label: string, getValue: (p: PeriodTotals) => number): Record<string, unknown> {
+    const row: Record<string, unknown> = { label };
+    for (const p of periodTotals) {
+      row[periodKey(p)] = getValue(p);
+    }
+    return row;
+  }
+
+  const periodExportColumns: ExportColumn[] = periodTotals.map((p) => ({
+    header: periodLabel(p.year, p.month),
+    value: (row) => {
+      const v = row[periodKey(p)];
+      return v === null || v === undefined ? "" : (v as number);
+    },
+  }));
+
+  const statementExportColumns: ExportColumn[] = [
+    { header: "Kalem", value: (row) => row.label as string },
+    ...periodExportColumns,
+  ];
+
+  const statementExportRows: Record<string, unknown>[] = [
+    makeExportRow("A. Aidat Gelirleri", (p) => p.aidatGelirleri),
+    makeExportRow("B. Diğer Operasyonel Gelirler", (p) => p.digerOperasyonelGelirler),
+    makeExportRow("C. Toplam Gelir (A + B)", (p) => p.toplamGelir),
+    ...opexSegments.map((segment) =>
+      makeExportRow(stripSegmentPrefix(segment), (p) => p.opexBySegment.get(segment) ?? 0)
+    ),
+    makeExportRow("M. Toplam Operasyonel Gider", (p) => p.toplamOperasyonelGider),
+    makeExportRow("N. Faaliyet Fazlası / (Açığı) (C − M)", (p) => p.faaliyetSonucu),
+    makeExportRow("O. Finansal Gelirler", (p) => p.finansalGelirler),
+    makeExportRow("P. Finansal Giderler", (p) => p.finansalGiderler),
+    makeExportRow("Q. Dönem Fazlası / (Açığı) (N + O − P)", (p) => p.donemSonucu),
+  ];
+
+  const capexExportRows: Record<string, unknown>[] = [
+    ...(capexCategories.length > 1
+      ? capexCategories.map((name) => makeExportRow(name, (p) => p.capexByCategory.get(name) ?? 0))
+      : []),
+    makeExportRow("Toplam CAPEX", (p) => p.capexTotal),
+  ];
+
+  function handleExportStatementExcel() {
+    if (allZero) return;
+    exportRowsToExcel(statementExportRows, statementExportColumns, {
+      title: "Dönem Karşılaştırma",
+      subtitle: rangeLabel,
+      sheetName: "Gelir Tablosu",
+    });
+  }
+
+  function handleExportStatementPdf() {
+    if (allZero) return;
+    exportRowsToPdf(statementExportRows, statementExportColumns, {
+      title: "Dönem Karşılaştırma",
+      subtitle: rangeLabel,
+    });
+  }
+
+  const capexHasData = !(capexGrandTotal === 0 && capexCategories.length === 0);
+
+  function handleExportCapexExcel() {
+    if (!capexHasData) return;
+    exportRowsToExcel(capexExportRows, statementExportColumns, {
+      title: "Dönem Karşılaştırma (CAPEX)",
+      subtitle: rangeLabel,
+      sheetName: "CAPEX",
+    });
+  }
+
+  function handleExportCapexPdf() {
+    if (!capexHasData) return;
+    exportRowsToPdf(capexExportRows, statementExportColumns, {
+      title: "Dönem Karşılaştırma (CAPEX)",
+      subtitle: rangeLabel,
+    });
+  }
+
   return (
     <div>
       {error && <div className="auth-error" style={{ marginBottom: 16 }}>{error}</div>}
@@ -423,6 +508,24 @@ export default function ComparisonReportPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Dönem Aralıklı Gelir Tablosu — {rangeLabel}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={allZero}
+              onClick={handleExportStatementExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={allZero}
+              onClick={handleExportStatementPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
         <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 12 }}>
           fiscal_periods kaydı bulunmayan aylar sıfır olarak gösterilir. CAPEX bu tablonun (A–Q) dışında ayrıca
@@ -525,6 +628,24 @@ export default function ComparisonReportPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Sermaye Harcamaları (CAPEX) — {rangeLabel}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={!capexHasData}
+              onClick={handleExportCapexExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={!capexHasData}
+              onClick={handleExportCapexPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
         <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 12 }}>
           CAPEX, yukarıdaki gelir tablosunun (A–Q) dışında ayrıca takip edilir ve faaliyet sonucuna dahil edilmez.

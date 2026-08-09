@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 const currency = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
@@ -283,6 +284,66 @@ export default function LatePayersPage() {
 
   const showEmptyState = outstanding.length === 0 && !hasAnyAccrualHistory;
 
+  const filterSubtitle = filterUnitId ? unitLabel(unitsById[filterUnitId]) : undefined;
+
+  const outstandingExportRows = visibleOutstanding.map((row) => ({
+    unit: unitLabel(unitsById[row.unit_id]),
+    balance: row.balance,
+    oldestDueDate: row.oldestDueDate ? formatDate(row.oldestDueDate) : "—",
+  }));
+
+  const outstandingExportColumns: ExportColumn[] = [
+    { header: "Daire", value: (row) => row.unit as string },
+    { header: "Güncel Borç", value: (row) => row.balance as number },
+    { header: "En Eski Vadesi Geçen Tahakkuk", value: (row) => row.oldestDueDate as string },
+  ];
+
+  function handleExportOutstandingExcel() {
+    if (outstandingExportRows.length === 0) return;
+    exportRowsToExcel(outstandingExportRows, outstandingExportColumns, {
+      title: "Güncel Borçlu Daireler",
+      subtitle: filterSubtitle,
+      sheetName: "Borçlu Daireler",
+    });
+  }
+
+  function handleExportOutstandingPdf() {
+    if (outstandingExportRows.length === 0) return;
+    exportRowsToPdf(outstandingExportRows, outstandingExportColumns, {
+      title: "Güncel Borçlu Daireler",
+      subtitle: filterSubtitle,
+    });
+  }
+
+  const latenessExportRows = visibleLateness.map((row) => ({
+    unit: unitLabel(unitsById[row.unit_id]),
+    lateCount: row.lateCount,
+    mostRecentLateDate: row.mostRecentLateDate ? formatDate(row.mostRecentLateDate) : "—",
+  }));
+
+  const latenessExportColumns: ExportColumn[] = [
+    { header: "Daire", value: (row) => row.unit as string },
+    { header: "Son 12 Ayda Geciken Ödeme Sayısı", value: (row) => row.lateCount as number },
+    { header: "Son Gecikme Tarihi", value: (row) => row.mostRecentLateDate as string },
+  ];
+
+  function handleExportLatenessExcel() {
+    if (latenessExportRows.length === 0) return;
+    exportRowsToExcel(latenessExportRows, latenessExportColumns, {
+      title: "Aidat Gecikme Sıklığı",
+      subtitle: filterSubtitle,
+      sheetName: "Gecikme Sıklığı",
+    });
+  }
+
+  function handleExportLatenessPdf() {
+    if (latenessExportRows.length === 0) return;
+    exportRowsToPdf(latenessExportRows, latenessExportColumns, {
+      title: "Aidat Gecikme Sıklığı",
+      subtitle: filterSubtitle,
+    });
+  }
+
   // Rows here only exist for units with >=1 monthly_dues accrual in the
   // trailing-12-month window (see byUnit construction above), so a 0 here
   // always means "0 gecikme, veri var" rather than "no history" — units with
@@ -373,6 +434,24 @@ export default function LatePayersPage() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Güncel Borçlu Daireler</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={outstandingExportRows.length === 0}
+                  onClick={handleExportOutstandingExcel}
+                >
+                  Excel İndir
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={outstandingExportRows.length === 0}
+                  onClick={handleExportOutstandingPdf}
+                >
+                  PDF İndir
+                </button>
+              </div>
             </div>
             {visibleOutstanding.length === 0 ? (
               <div className="empty-state">
@@ -407,6 +486,24 @@ export default function LatePayersPage() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Son 12 Ayda Aidat Gecikme Sıklığı</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={latenessExportRows.length === 0}
+                  onClick={handleExportLatenessExcel}
+                >
+                  Excel İndir
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={latenessExportRows.length === 0}
+                  onClick={handleExportLatenessPdf}
+                >
+                  PDF İndir
+                </button>
+              </div>
             </div>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>
               Aylık aidat tahakkuklarının vade tarihinden sonra ödendiği (veya hâlâ ödenmemiş ve vadesi geçmiş

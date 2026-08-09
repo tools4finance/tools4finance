@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 type Block = {
   id: string;
@@ -298,6 +299,36 @@ export default function UnitsPage() {
   const blockName_ = (blockId: string | null) => blocks.find((b) => b.id === blockId)?.name ?? "—";
   const unitCountForBlock = (blockId: string) => units.filter((u) => u.block_id === blockId).length;
 
+  function buildUnitsExportColumns(): ExportColumn[] {
+    return [
+      { header: "Blok", value: (row) => blockName_((row as unknown as Unit).block_id) },
+      { header: "Daire No", value: (row) => (row as unknown as Unit).unit_number },
+      { header: "Tip", value: (row) => (row as unknown as Unit).unit_type ?? "—" },
+      { header: "Brüt m²", value: (row) => (row as unknown as Unit).gross_sqm ?? "—" },
+      { header: "Net m²", value: (row) => (row as unknown as Unit).net_sqm ?? "—" },
+      {
+        header: "Aylık Aidat",
+        value: (row) => {
+          const rule = duesRulesByUnit[(row as unknown as Unit).id];
+          return rule ? rule.amount : "Tanımsız";
+        },
+      },
+      { header: "Durum", value: (row) => ((row as unknown as Unit).active ? "Aktif" : "Pasif") },
+    ];
+  }
+
+  function handleExportUnitsExcel() {
+    exportRowsToExcel(units as unknown as Record<string, unknown>[], buildUnitsExportColumns(), {
+      title: "Daireler",
+    });
+  }
+
+  function handleExportUnitsPdf() {
+    exportRowsToPdf(units as unknown as Record<string, unknown>[], buildUnitsExportColumns(), {
+      title: "Daireler",
+    });
+  }
+
   if (loading) {
     return <div className="empty-state">Yükleniyor…</div>;
   }
@@ -384,11 +415,29 @@ export default function UnitsPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Daireler</div>
-          {canWrite && (
-            <button className="btn-secondary" onClick={() => (showUnitForm ? setShowUnitForm(false) : openUnitForm())}>
-              {showUnitForm ? "Vazgeç" : "+ Daire Ekle"}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={units.length === 0}
+              onClick={handleExportUnitsExcel}
+            >
+              Excel İndir
             </button>
-          )}
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={units.length === 0}
+              onClick={handleExportUnitsPdf}
+            >
+              PDF İndir
+            </button>
+            {canWrite && (
+              <button className="btn-secondary" onClick={() => (showUnitForm ? setShowUnitForm(false) : openUnitForm())}>
+                {showUnitForm ? "Vazgeç" : "+ Daire Ekle"}
+              </button>
+            )}
+          </div>
         </div>
 
         <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>

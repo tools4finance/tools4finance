@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 const currency = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
@@ -201,6 +202,47 @@ export default function AidatReportsPage() {
   const totalRowStyle: React.CSSProperties = { fontWeight: 600 };
   const resultColor = (v: number) => (v >= 0 ? "var(--green)" : "var(--coral)");
 
+  const periodLabel = `${month}/${year}`;
+
+  const statementExportRows: { label: string; amount: number | null }[] = [
+    { label: "A. Aidat Gelirleri", amount: aidatGelirleri },
+    { label: "B. Diğer Operasyonel Gelirler", amount: digerOperasyonelGelirler },
+    { label: "C. Toplam Gelir (A + B)", amount: toplamGelir },
+    ...opexLines.map((line) => ({ label: line.label, amount: line.amount })),
+    { label: "M. Toplam Operasyonel Gider", amount: toplamOperasyonelGider },
+    { label: "N. Faaliyet Fazlası / (Açığı) (C − M)", amount: faaliyetSonucu },
+    { label: "O. Finansal Gelirler", amount: finansalGelirler },
+    { label: "P. Finansal Giderler", amount: finansalGiderler },
+    { label: "Q. Dönem Fazlası / (Açığı) (N + O − P)", amount: donemSonucu },
+    { label: "— Sermaye Harcamaları (CAPEX) —", amount: null },
+    ...capexLines.map((line) => ({ label: line.label, amount: line.amount })),
+    { label: "Toplam CAPEX", amount: capexTotal },
+  ];
+
+  const statementExportColumns: ExportColumn[] = [
+    { header: "Kalem", value: (row) => row.label as string },
+    { header: "Tutar", value: (row) => (row.amount === null ? "" : (row.amount as number)) },
+  ];
+
+  const hasExportableData = !allZero;
+
+  function handleExportStatementExcel() {
+    if (!hasExportableData) return;
+    exportRowsToExcel(statementExportRows, statementExportColumns, {
+      title: "Gelir Tablosu",
+      subtitle: periodLabel,
+      sheetName: "Gelir Tablosu",
+    });
+  }
+
+  function handleExportStatementPdf() {
+    if (!hasExportableData) return;
+    exportRowsToPdf(statementExportRows, statementExportColumns, {
+      title: "Gelir Tablosu",
+      subtitle: periodLabel,
+    });
+  }
+
   return (
     <div>
       {error && <div className="auth-error" style={{ marginBottom: 16 }}>{error}</div>}
@@ -214,6 +256,24 @@ export default function AidatReportsPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Aylık Gelir Tablosu — {month}/{year}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={!hasExportableData}
+              onClick={handleExportStatementExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={!hasExportableData}
+              onClick={handleExportStatementPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
 
         <div className="table-scroll">

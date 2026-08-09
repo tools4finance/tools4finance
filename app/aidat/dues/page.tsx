@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 type AccrualType = "monthly_dues" | "additional_dues" | "special_assessment" | "penalty" | "other";
 type AccrualStatus = "active" | "void";
@@ -352,6 +353,40 @@ export default function DuesPage() {
     await fetchAll();
   }
 
+  function buildAccrualsExportColumns(): ExportColumn[] {
+    return [
+      {
+        header: "Daire",
+        value: (row) => {
+          const a = row as unknown as AccrualRow;
+          return a.block_name ? `${a.block_name} / ${a.unit_number}` : a.unit_number;
+        },
+      },
+      { header: "Tür", value: (row) => ACCRUAL_TYPE_LABELS[(row as unknown as AccrualRow).accrual_type] },
+      { header: "Açıklama", value: (row) => (row as unknown as AccrualRow).description ?? "—" },
+      { header: "Tutar", value: (row) => (row as unknown as AccrualRow).amount },
+      { header: "Vade Tarihi", value: (row) => (row as unknown as AccrualRow).due_date ?? "—" },
+      {
+        header: "Durum",
+        value: (row) => ((row as unknown as AccrualRow).status === "active" ? "Aktif" : "İptal"),
+      },
+    ];
+  }
+
+  function handleExportAccrualsExcel() {
+    exportRowsToExcel(accruals as unknown as Record<string, unknown>[], buildAccrualsExportColumns(), {
+      title: "Aidat Tahakkukları",
+      subtitle: `${month}/${year}`,
+    });
+  }
+
+  function handleExportAccrualsPdf() {
+    exportRowsToPdf(accruals as unknown as Record<string, unknown>[], buildAccrualsExportColumns(), {
+      title: "Aidat Tahakkukları",
+      subtitle: `${month}/${year}`,
+    });
+  }
+
   async function handleVoid(accrual: AccrualRow) {
     const reason = window.prompt("İptal gerekçesi (kısa açıklama):");
     if (reason === null) return;
@@ -503,6 +538,24 @@ export default function DuesPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Tahakkuklar ({month}/{year})</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={accruals.length === 0}
+              onClick={handleExportAccrualsExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={accruals.length === 0}
+              onClick={handleExportAccrualsPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
 
         {accruals.length === 0 ? (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 type IncomeCategory = {
   id: string;
@@ -175,6 +176,49 @@ export default function IncomesPage() {
     .filter((i) => i.status === "active")
     .reduce((sum, i) => sum + i.amount, 0);
 
+  const periodLabel = `${month}/${year}`;
+
+  const incomeExportRows = useMemo(
+    () =>
+      incomes.map((income) => {
+        const cat = categoriesById.get(income.income_category_id);
+        return {
+          date: income.income_date,
+          category: cat ? `${cat.group_name} / ${cat.name}` : "—",
+          amount: income.amount,
+          status:
+            income.status === "active"
+              ? "Aktif"
+              : `İptal${income.voided_reason ? ` (${income.voided_reason})` : ""}`,
+        };
+      }),
+    [incomes, categoriesById]
+  );
+
+  const incomeExportColumns: ExportColumn[] = [
+    { header: "Tarih", value: (row) => row.date as string },
+    { header: "Grup / Kategori", value: (row) => row.category as string },
+    { header: "Tutar", value: (row) => row.amount as number },
+    { header: "Durum", value: (row) => row.status as string },
+  ];
+
+  function handleExportIncomesExcel() {
+    if (incomeExportRows.length === 0) return;
+    exportRowsToExcel(incomeExportRows, incomeExportColumns, {
+      title: "Diğer Gelirler",
+      subtitle: periodLabel,
+      sheetName: "Gelirler",
+    });
+  }
+
+  function handleExportIncomesPdf() {
+    if (incomeExportRows.length === 0) return;
+    exportRowsToPdf(incomeExportRows, incomeExportColumns, {
+      title: "Diğer Gelirler",
+      subtitle: periodLabel,
+    });
+  }
+
   return (
     <div>
       <div className="panel">
@@ -252,6 +296,24 @@ export default function IncomesPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Gelirler</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={incomeExportRows.length === 0}
+              onClick={handleExportIncomesExcel}
+            >
+              Excel İndir
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={incomeExportRows.length === 0}
+              onClick={handleExportIncomesPdf}
+            >
+              PDF İndir
+            </button>
+          </div>
         </div>
 
         {loading ? (

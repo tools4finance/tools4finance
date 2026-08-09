@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
 
 type Block = {
   id: string;
@@ -475,6 +476,32 @@ export default function PaymentsPage() {
     await fetchAll();
   }
 
+  function buildPaymentsExportColumns(): ExportColumn[] {
+    return [
+      { header: "Daire", value: (row) => unitLabel((row as unknown as Payment).unit_id) },
+      { header: "Tarih", value: (row) => formatDate((row as unknown as Payment).payment_date) },
+      { header: "Tutar", value: (row) => (row as unknown as Payment).amount },
+      { header: "Yöntem", value: (row) => METHOD_LABELS[(row as unknown as Payment).method] },
+      { header: "Açıklama", value: (row) => (row as unknown as Payment).description ?? "—" },
+      {
+        header: "Durum",
+        value: (row) => ((row as unknown as Payment).status === "active" ? "Aktif" : "İptal"),
+      },
+    ];
+  }
+
+  function handleExportPaymentsExcel() {
+    exportRowsToExcel(filteredPayments as unknown as Record<string, unknown>[], buildPaymentsExportColumns(), {
+      title: "Tahsilatlar",
+    });
+  }
+
+  function handleExportPaymentsPdf() {
+    exportRowsToPdf(filteredPayments as unknown as Record<string, unknown>[], buildPaymentsExportColumns(), {
+      title: "Tahsilatlar",
+    });
+  }
+
   async function handleVoid(payment: Payment) {
     if (!canWrite) return;
     const reason = window.prompt("İptal nedeni:");
@@ -649,11 +676,29 @@ export default function PaymentsPage() {
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Tahsilat Listesi</div>
-          {hasActiveFilters && (
-            <button className="btn-secondary" onClick={clearFilters}>
-              Filtreleri Temizle
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={filteredPayments.length === 0}
+              onClick={handleExportPaymentsExcel}
+            >
+              Excel İndir
             </button>
-          )}
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={filteredPayments.length === 0}
+              onClick={handleExportPaymentsPdf}
+            >
+              PDF İndir
+            </button>
+            {hasActiveFilters && (
+              <button className="btn-secondary" onClick={clearFilters}>
+                Filtreleri Temizle
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="form-grid">

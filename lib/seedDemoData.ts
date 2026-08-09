@@ -134,8 +134,13 @@ function isoDate(year: number, month: number, day: number) {
 }
 
 function addDays(iso: string, days: number) {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
+  // Parse/emit in UTC explicitly (Z suffix + setUTCDate) — without this,
+  // browsers in a positive UTC-offset timezone (e.g. Turkey, UTC+3) would
+  // parse "T00:00:00" as local midnight, and toISOString() would then
+  // convert that back to the *previous* UTC calendar day, silently shifting
+  // every payment date one day early.
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
