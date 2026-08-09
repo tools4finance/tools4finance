@@ -50,9 +50,19 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
     // invite shows up immediately without a second page load.
     await supabase.rpc("kpi_claim_membership");
 
+    // IMPORTANT: filter to this user's own rows explicitly. RLS
+    // (has_kpi_org_access) allows a member to SELECT every member row in any
+    // org they belong to (needed elsewhere for HR roster/results screens),
+    // so an unfiltered query here would return every colleague's membership
+    // row too. Without this .eq, `memberships.find(m => m.org_id === X)`
+    // downstream would resolve to whichever row happens to sort first
+    // (created_at ascending — i.e. the org's HR admin) instead of the
+    // current user's own row, breaking every employee's "my goals" flow in
+    // any org with more than one member.
     const { data, error } = await supabase
       .from("KPI_members")
       .select("id, org_id, role, full_name, email, department_id, org:KPI_organizations(id, name, owner_id)")
+      .eq("user_id", userData.user.id)
       .order("created_at", { ascending: true });
 
     if (!error && data) {

@@ -19,6 +19,23 @@ type IndividualGoal = {
   manager_comment: string | null;
 };
 
+type HistoryEntry = {
+  id: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  changed_at: string;
+};
+
+const HISTORY_FIELD_LABELS: Record<string, string> = {
+  self_rating: "Kişi Puanı",
+  self_comment: "Kişi Yorumu",
+  manager_rating: "Yönetici Puanı",
+  manager_comment: "Yönetici Yorumu",
+  weight_pct: "Ağırlık %",
+  title: "Başlık",
+};
+
 export default function KpiResultsPage() {
   const { selectedMembership, canManage } = useKpi();
   const orgId = selectedMembership?.org_id ?? null;
@@ -31,6 +48,9 @@ export default function KpiResultsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [historyGoalId, setHistoryGoalId] = useState<string | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchPeriods = useCallback(async () => {
     if (!orgId) return;
@@ -101,6 +121,23 @@ export default function KpiResultsPage() {
       .eq("id", goal.id);
     if (updateError) setError(updateError.message);
     else await fetchDetail();
+  }
+
+  async function handleToggleHistory(goalId: string) {
+    if (historyGoalId === goalId) {
+      setHistoryGoalId(null);
+      return;
+    }
+    setHistoryGoalId(goalId);
+    setHistoryLoading(true);
+    const { data, error: historyError } = await supabase
+      .from("KPI_individual_goal_history")
+      .select("id, field, old_value, new_value, changed_at")
+      .eq("goal_id", goalId)
+      .order("changed_at", { ascending: false });
+    if (historyError) setError(historyError.message);
+    setHistoryEntries((data ?? []) as HistoryEntry[]);
+    setHistoryLoading(false);
   }
 
   if (!canManage) {
@@ -242,7 +279,8 @@ export default function KpiResultsPage() {
                                       </thead>
                                       <tbody>
                                         {memberGoals.map((g) => (
-                                          <tr key={g.id}>
+                                          <Fragment key={g.id}>
+                                          <tr>
                                             <td className="wrap">{g.title}</td>
                                             <td>{g.weight_pct}</td>
                                             <td>{g.self_rating ?? "—"}</td>
@@ -272,10 +310,39 @@ export default function KpiResultsPage() {
                                                 style={{ width: "100%", minWidth: 160 }}
                                               />
                                             </td>
-                                            <td>
-                                              <button className="btn-secondary" onClick={() => handleUpdateIndividualGoal(g)}>Kaydet</button>
+                                            <td style={{ whiteSpace: "nowrap" }}>
+                                              <button className="btn-secondary" onClick={() => handleUpdateIndividualGoal(g)}>Kaydet</button>{" "}
+                                              <button className="btn-secondary" onClick={() => handleToggleHistory(g.id)}>
+                                                {historyGoalId === g.id ? "Kapat" : "Geçmiş"}
+                                              </button>
                                             </td>
                                           </tr>
+                                          {historyGoalId === g.id && (
+                                            <tr>
+                                              <td colSpan={7} style={{ background: "var(--bg2)" }}>
+                                                {historyLoading ? (
+                                                  <div className="empty-state">Yükleniyor…</div>
+                                                ) : historyEntries.length === 0 ? (
+                                                  <div className="empty-state">Bu hedefte henüz bir değişiklik kaydı yok.</div>
+                                                ) : (
+                                                  <div style={{ padding: "8px 4px" }}>
+                                                    {historyEntries.map((h) => (
+                                                      <div key={h.id} style={{ fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>
+                                                        <strong>{HISTORY_FIELD_LABELS[h.field] ?? h.field}</strong>{": "}
+                                                        <span style={{ color: "var(--text2)" }}>{h.old_value ?? "—"}</span>
+                                                        {" → "}
+                                                        <span>{h.new_value ?? "—"}</span>
+                                                        <span style={{ color: "var(--text3)", marginLeft: 8 }}>
+                                                          {new Date(h.changed_at).toLocaleString("tr-TR")}
+                                                        </span>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          )}
+                                          </Fragment>
                                         ))}
                                       </tbody>
                                     </table>

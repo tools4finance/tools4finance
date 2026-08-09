@@ -132,7 +132,15 @@ export default function KpiMyGoalsPage() {
         self_comment: goal.self_comment,
       })
       .eq("id", goal.id);
-    if (updateError) setError(updateError.message);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    // A goal already rated by the manager has its weight_pct/title/description
+    // frozen server-side (see kpi_guard_individual_goal_fields) — refetch so
+    // the UI reflects what was actually persisted rather than the optimistic
+    // edit the employee typed in.
+    await fetchGoals();
   }
 
   async function handleDeleteGoal(id: string) {
@@ -224,10 +232,19 @@ export default function KpiMyGoalsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {goals.map((g) => (
+                      {goals.map((g) => {
+                        // Once HR has rated a goal, its title/weight are frozen
+                        // server-side (see kpi_guard_individual_goal_fields) so
+                        // an employee can't silently invalidate the review by
+                        // reweighting/retitling/deleting it afterward — mirror
+                        // that lock in the UI instead of letting an edit look
+                        // like it worked and then get reverted on refetch.
+                        const reviewed = g.manager_rating !== null;
+                        const structuralLocked = isClosed || reviewed;
+                        return (
                         <tr key={g.id}>
                           <td className="wrap">
-                            {isClosed ? g.title : (
+                            {structuralLocked ? g.title : (
                               <input
                                 value={g.title}
                                 onChange={(e) => setGoals(goals.map((x) => (x.id === g.id ? { ...x, title: e.target.value } : x)))}
@@ -236,7 +253,7 @@ export default function KpiMyGoalsPage() {
                             )}
                           </td>
                           <td>
-                            {isClosed ? g.weight_pct : (
+                            {structuralLocked ? g.weight_pct : (
                               <input
                                 type="number"
                                 step="any"
@@ -268,16 +285,22 @@ export default function KpiMyGoalsPage() {
                               />
                             )}
                           </td>
-                          <td>{g.manager_rating ?? "—"}</td>
+                          <td>
+                            {g.manager_rating ?? "—"}
+                            {reviewed && !isClosed && <span className="pill pill-green" style={{ marginLeft: 6 }}>Değerlendirildi</span>}
+                          </td>
                           <td className="wrap">{g.manager_comment || "—"}</td>
                           {!isClosed && (
                             <td style={{ whiteSpace: "nowrap" }}>
                               <button className="btn-secondary" onClick={() => handleUpdateGoal(g)}>Kaydet</button>{" "}
-                              <button className="btn-danger" onClick={() => handleDeleteGoal(g.id)}>Sil</button>
+                              <button className="btn-danger" onClick={() => handleDeleteGoal(g.id)} disabled={reviewed} title={reviewed ? "Değerlendirilmiş hedef silinemez" : undefined}>
+                                Sil
+                              </button>
                             </td>
                           )}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

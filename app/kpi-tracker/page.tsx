@@ -17,6 +17,7 @@ type Period = {
 
 type CompanyGoal = { weight_pct: number; achievement_pct: number | null };
 type IndividualGoal = { weight_pct: number; self_rating: number | null; manager_rating: number | null };
+type OrgIndividualGoal = { member_id: string; manager_rating: number | null };
 
 export default function KpiDashboardPage() {
   const { selectedMembership, memberships } = useKpi();
@@ -29,6 +30,7 @@ export default function KpiDashboardPage() {
 
   const [companyGoals, setCompanyGoals] = useState<CompanyGoal[]>([]);
   const [individualGoals, setIndividualGoals] = useState<IndividualGoal[]>([]);
+  const [orgIndividualGoals, setOrgIndividualGoals] = useState<OrgIndividualGoal[]>([]);
 
   const orgId = selectedMembership?.org_id ?? null;
   const isHr = selectedMembership?.role === "hr_admin";
@@ -54,19 +56,34 @@ export default function KpiDashboardPage() {
 
       const current = ((periodsRes.data ?? []) as Period[]).find((p) => p.status !== "draft") ?? null;
       if (current) {
-        const [cgRes, igRes] = await Promise.all([
+        const queries = [
           supabase.from("KPI_company_goals").select("weight_pct, achievement_pct").eq("period_id", current.id),
           supabase
             .from("KPI_individual_goals")
             .select("weight_pct, self_rating, manager_rating")
             .eq("period_id", current.id)
             .eq("member_id", selectedMembership.id),
-        ]);
+        ] as const;
+        const [cgRes, igRes] = await Promise.all(queries);
         setCompanyGoals((cgRes.data ?? []) as CompanyGoal[]);
         setIndividualGoals((igRes.data ?? []) as IndividualGoal[]);
+
+        // HR-only completion metrics — how much of the org has actually
+        // entered goals / been reviewed for the current period. RLS still
+        // scopes this to the HR admin's own org via is_kpi_hr_admin.
+        if (selectedMembership.role === "hr_admin") {
+          const orgIgRes = await supabase
+            .from("KPI_individual_goals")
+            .select("member_id, manager_rating")
+            .eq("period_id", current.id);
+          setOrgIndividualGoals((orgIgRes.data ?? []) as OrgIndividualGoal[]);
+        } else {
+          setOrgIndividualGoals([]);
+        }
       } else {
         setCompanyGoals([]);
         setIndividualGoals([]);
+        setOrgIndividualGoals([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Veriler yüklenirken hata oluştu.");
@@ -113,6 +130,32 @@ export default function KpiDashboardPage() {
           </div>
         </div>
       )}
+
+      {isHr && currentPeriod && (() => {
+        // Every KPI here needs a clear numerator/denominator/empty-state:
+        // membersWithGoals/memberCount can be 0/0 right after announcing
+        // (nobody has entered anything yet), and ratedGoals/totalGoals can
+        // likewise be 0/0 before anyone has submitted a goal to rate.
+        const membersWithGoals = new Set(orgIndividualGoals.map((g) => g.member_id)).size;
+        const totalGoals = orgIndividualGoals.length;
+        const ratedGoals = orgIndividualGoals.filter((g) => g.manager_rating !== null).length;
+        const submissionPct = memberCount > 0 ? (membersWithGoals / memberCount) * 100 : null;
+        const reviewPct = totalGoals > 0 ? (ratedGoals / totalGoals) * 100 : null;
+        return (
+          <div className="kpi-grid">
+            <div className="kpi-card">
+              <div className="kpi-label">Hedef Girişi Tamamlanma</div>
+              <div className="kpi-value">{submissionPct === null ? "—" : `%${submissionPct.toFixed(0)}`}</div>
+              <div className="kpi-sub">{memberCount > 0 ? `${membersWithGoals}/${memberCount} kişi hedef girdi` : "Henüz kişi yok"}</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-label">Değerlendirme Tamamlanma</div>
+              <div className="kpi-value">{reviewPct === null ? "—" : `%${reviewPct.toFixed(0)}`}</div>
+              <div className="kpi-sub">{totalGoals > 0 ? `${ratedGoals}/${totalGoals} hedef değerlendirildi` : "Henüz hedef girilmedi"}</div>
+            </div>
+          </div>
+        );
+      })()}
 
       {draftPeriod && isHr && (
         <div className="empty-state" style={{ marginBottom: 16 }}>
