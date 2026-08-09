@@ -10,18 +10,18 @@
   --text: #161B2E;
   --text2: #545B72;
   --text3: #9499AC;
-  /* Brand palette sourced directly from the tools4finance logo/icon pack:
-     navy #082B57 and teal #0BBC97. --accent/--blue and --green are the two
-     brand colors; purple/coral/amber stay as secondary variety colors for
-     non-flagship product cards (Bridge/Graph) and status accents. */
-  --accent: #082B57;
+  /* Dominant UI accent is a light cyan-blue (user preference) rather than
+     the logo's own navy — the navy/teal pairing still lives in the actual
+     logo asset itself, just not carried through as the site's button/link
+     color. --green stays the logo's teal for status accents. */
+  --accent: #0EA5E9;
   --accent-text: #FFFFFF;
   --green: #029982;
   --green-bg: #DCF3EC;
   --amber: #92620C;
   --amber-bg: #F8EAD3;
-  --blue: #082B57;
-  --blue-bg: #E1E7EF;
+  --blue: #0EA5E9;
+  --blue-bg: #E0F2FE;
   --purple: #5E4B9E;
   --purple-bg: #ECE6F8;
   --coral: #A14438;
@@ -40,14 +40,14 @@
   --text: #E7E9F5;
   --text2: #9DA2BC;
   --text3: #5F6480;
-  --accent: #6FA3E0;
-  --accent-text: #10131F;
+  --accent: #38BDF8;
+  --accent-text: #0B2340;
   --green: #3FDDB0;
   --green-bg: #0E3A30;
   --amber: #E3B25C;
   --amber-bg: #362708;
-  --blue: #6FA3E0;
-  --blue-bg: #16294A;
+  --blue: #38BDF8;
+  --blue-bg: #163149;
   --purple: #B5A0EC;
   --purple-bg: #2A2050;
   --coral: #E0897A;
@@ -127,7 +127,7 @@ nav.site-nav {
 /* Fixed light backdrop (not theme-dependent) — the brand mark's navy line
    work has too little contrast directly against the dark theme's near-black
    background, and there's no separate white-silhouette asset for that case. */
-.nav-logo { width: 28px; height: 28px; background: #FFFFFF; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 3px; }
+.nav-logo { width: 34px; height: 34px; background: #FFFFFF; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 2px; }
 .nav-logo img { width: 100%; height: 100%; object-fit: contain; }
 .nav-name { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
 .nav-links { display: flex; align-items: center; gap: 24px; }

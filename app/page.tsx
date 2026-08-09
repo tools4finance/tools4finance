@@ -64,6 +64,28 @@ export default function HomePage() {
             </div>
           </Link>
 
+          <Link className="product-card" href="/customer-segmentation">
+            <div className="product-icon icon-purple">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <circle cx="7" cy="6" r="2.6" />
+                <path d="M2.5 17c0-2.8 2-4.6 4.5-4.6s4.5 1.8 4.5 4.6" />
+                <circle cx="14.5" cy="7" r="2" />
+                <path d="M12.5 12.8c2-.3 4.5.9 4.5 4.2" />
+              </svg>
+            </div>
+            <div>
+              <div className="product-name">Customer Segmentation</div>
+              <div className="product-desc">
+                Müşterilerinizi risk sınıfı, vade gecikmesi, ödeme alışkanlığı ve stratejik önem gibi
+                kriterlerle puanlayın — tüm ağırlıklar ve eşikler size özel, tamamen düzenlenebilir.
+              </div>
+            </div>
+            <div className="product-footer">
+              <span className="product-status status-live">Aktif</span>
+              <span className="product-arrow">→</span>
+            </div>
+          </Link>
+
           <Link className="product-card" href="/bridge/index.html">
             <div className="product-icon icon-purple">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4">

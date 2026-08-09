@@ -175,7 +175,7 @@ function AidatTopBar({
     <div className="aidat-topbar">
       <Link href="/" className="nav-brand">
         <div className="nav-logo">
-          <Image src="/logo-icon.png" alt="tools4finance" width={28} height={28} />
+          <Image src="/logo-icon.png" alt="tools4finance" width={34} height={34} />
         </div>
         <span className="nav-name">Site Bütçe Yönetimi</span>
       </Link>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { seedDemoData, type SeedSummary } from "@/lib/seedDemoData";
+import { DonutChart } from "@/components/DonutChart";
 
 const currency = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
@@ -294,14 +295,6 @@ export default function AidatDashboardPage() {
     color: isOtherSlice(i) ? PIE_OTHER_COLOR : PIE_COLORS[i % PIE_COLORS.length],
     pct: expenseTotal > 0 ? (seg.amount / expenseTotal) * 100 : 0,
   }));
-  let cumulativePct = 0;
-  const conicStops = pieSlices
-    .map((seg) => {
-      const from = cumulativePct;
-      cumulativePct += seg.pct;
-      return `${seg.color} ${from}% ${cumulativePct}%`;
-    })
-    .join(", ");
   const isNewSite = unitsCount === 0;
 
   return (
@@ -440,63 +433,13 @@ export default function AidatDashboardPage() {
         {pieSlices.length === 0 ? (
           <div className="empty-state">Bu dönem için gider kaydı yok.</div>
         ) : (
-          <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ position: "relative", width: 180, height: 180, flexShrink: 0 }}>
-              <div
-                style={{
-                  width: 180,
-                  height: 180,
-                  borderRadius: "50%",
-                  background: `conic-gradient(${conicStops})`,
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: "20%",
-                  left: "20%",
-                  width: "60%",
-                  height: "60%",
-                  borderRadius: "50%",
-                  background: "var(--surface)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  padding: 4,
-                }}
-              >
-                <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Toplam OPEX
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{currency.format(expenseTotal)}</div>
-              </div>
-            </div>
-
-            <div style={{ flex: 1, minWidth: 220, display: "flex", flexDirection: "column", gap: 10 }}>
-              {pieSlices.map((seg) => (
-                <div key={seg.segment} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <span
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      background: seg.color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span className="wrap" style={{ flex: 1, color: "var(--text)" }}>
-                    {seg.segment}
-                  </span>
-                  <span style={{ color: "var(--text2)", whiteSpace: "nowrap" }}>{currency.format(seg.amount)}</span>
-                  <span style={{ color: "var(--text3)", width: 48, textAlign: "right", flexShrink: 0 }}>
-                    {formatPercent(seg.pct)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <DonutChart
+            slices={pieSlices.map((seg) => ({ key: seg.segment, label: seg.segment, amount: seg.amount, pct: seg.pct, color: seg.color }))}
+            centerLabel="Toplam OPEX"
+            centerValue={currency.format(expenseTotal)}
+            formatAmount={currency.format}
+            formatPct={formatPercent}
+          />
         )}
       </div>
     </div>
