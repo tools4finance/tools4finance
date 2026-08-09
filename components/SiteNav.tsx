@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import BrandMark from "@/components/BrandMark";
 
 const STRINGS = {
   tr: { contact: "İletişim", signin: "Giriş yap", panel: "Panele git" },
@@ -48,9 +48,7 @@ export default function SiteNav() {
   return (
     <nav className="site-nav">
       <Link href="/" className="nav-brand">
-        <div className="nav-logo-wordmark">
-          <Image src="/logo-wordmark.png" alt="tools4finance" width={1024} height={409} priority />
-        </div>
+        <BrandMark />
       </Link>
       <div className="nav-links">
         <Link className="nav-link" href="/contact.html">{t.contact}</Link>

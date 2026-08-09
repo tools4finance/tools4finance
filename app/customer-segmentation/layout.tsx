@@ -2,9 +2,9 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { CsProvider, useCs } from "@/lib/csContext";
 import { supabase } from "@/lib/supabase";
+import BrandMark from "@/components/BrandMark";
 
 const NAV_ITEMS = [
   { href: "/customer-segmentation", label: "Dashboard" },
@@ -21,9 +21,7 @@ function CsTopBar() {
   return (
     <div className="aidat-topbar">
       <Link href="/" className="nav-brand">
-        <div className="nav-logo-wordmark">
-          <Image src="/logo-wordmark.png" alt="tools4finance" width={1024} height={409} priority />
-        </div>
+        <BrandMark />
       </Link>
       <span className="aidat-topbar-title">Customer Segmentation</span>
       <div className="aidat-topbar-right">

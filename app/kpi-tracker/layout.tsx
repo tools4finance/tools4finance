@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { KpiProvider, useKpi } from "@/lib/kpiContext";
 import { supabase } from "@/lib/supabase";
+import BrandMark from "@/components/BrandMark";
 
 const NAV_ITEMS = [
   { href: "/kpi-tracker", label: "Dashboard" },
@@ -148,9 +148,7 @@ function KpiTopBar({ memberId }: { memberId: string | null }) {
   return (
     <div className="aidat-topbar">
       <Link href="/" className="nav-brand">
-        <div className="nav-logo-wordmark">
-          <Image src="/logo-wordmark.png" alt="tools4finance" width={1024} height={409} priority />
-        </div>
+        <BrandMark />
       </Link>
       <span className="aidat-topbar-title">KPI Tracker</span>
       <div className="aidat-topbar-right">
