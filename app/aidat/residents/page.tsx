@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import * as XLSX from "xlsx";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 
@@ -59,6 +60,150 @@ function unitLabel(unit: Unit | undefined, blocksById: Map<string, Block>): stri
   return block ? `${block.name} — ${unit.unit_number}` : unit.unit_number;
 }
 
+// ---------------------------------------------------------------------------
+// Excel bulk-import (Excel ile Toplu Yükle)
+// ---------------------------------------------------------------------------
+
+const BULK_TEMPLATE_HEADERS = ["Ad*", "Soyad*", "Telefon", "E-posta", "Blok", "Daire No", "İlişki"] as const;
+
+type ImportRowStatus = "ready" | "warning" | "skip";
+
+type ParsedResidentRow = {
+  rowNumber: number; // matches the row in the source spreadsheet (header = row 1)
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  blockName: string;
+  unitNumber: string;
+  relationship: RelationshipType;
+  status: ImportRowStatus;
+  message: string;
+  resolvedUnitId: string | null;
+};
+
+type BulkImportSummary = {
+  created: number;
+  skippedInvalid: number;
+  unassigned: number;
+  errors: string[];
+};
+
+function handleDownloadTemplate() {
+  const exampleRow: Record<(typeof BULK_TEMPLATE_HEADERS)[number], string> = {
+    "Ad*": "Ahmet",
+    "Soyad*": "Yılmaz",
+    Telefon: "0532 000 00 00",
+    "E-posta": "ahmet@ornek.com",
+    Blok: "A Blok",
+    "Daire No": "5",
+    İlişki: "Ev Sahibi",
+  };
+  const sheet = XLSX.utils.json_to_sheet([exampleRow], { header: [...BULK_TEMPLATE_HEADERS] });
+  const notesSheet = XLSX.utils.aoa_to_sheet([
+    ["Açıklama"],
+    ["* işaretli alanlar zorunludur: Ad ve Soyad."],
+    ["Telefon, E-posta, Blok, Daire No ve İlişki alanları opsiyoneldir."],
+    [
+      "İlişki alanı için geçerli değerler: Ev Sahibi, Kiracı, Oturan, Yetkili Kişi. Boş bırakılırsa veya tanınmazsa 'Ev Sahibi' kabul edilir.",
+    ],
+    [
+      "Blok ve Daire No girilirse, sistemde bu isimlerle kayıtlı bir blok/daire olması gerekir; aksi halde sakin yine oluşturulur ama daireye atanmaz.",
+    ],
+  ]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, "Sakinler");
+  XLSX.utils.book_append_sheet(workbook, notesSheet, "Açıklama");
+  XLSX.writeFile(workbook, "sakinler_sablonu.xlsx");
+}
+
+function cellToString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number") return String(value);
+  return String(value).trim();
+}
+
+function parseRelationshipLabel(label: string): RelationshipType {
+  const normalized = label.trim().toLowerCase();
+  if (!normalized) return "owner";
+  const entries = Object.entries(RELATIONSHIP_LABELS) as [RelationshipType, string][];
+  const match = entries.find(([, lbl]) => lbl.toLowerCase() === normalized);
+  return match ? match[0] : "owner";
+}
+
+function buildParsedRow(
+  raw: Record<string, unknown>,
+  index: number,
+  blocks: Block[],
+  units: Unit[]
+): ParsedResidentRow {
+  const firstName = cellToString(raw["Ad*"] ?? raw["Ad"]);
+  const lastName = cellToString(raw["Soyad*"] ?? raw["Soyad"]);
+  const phone = cellToString(raw["Telefon"]);
+  const email = cellToString(raw["E-posta"]);
+  const blockName = cellToString(raw["Blok"]);
+  const unitNumber = cellToString(raw["Daire No"]);
+  const relationship = parseRelationshipLabel(cellToString(raw["İlişki"]));
+  const rowNumber = index + 2; // header occupies row 1
+
+  const base = {
+    rowNumber,
+    firstName,
+    lastName,
+    phone,
+    email,
+    blockName,
+    unitNumber,
+    relationship,
+    resolvedUnitId: null as string | null,
+  };
+
+  if (!firstName || !lastName) {
+    return {
+      ...base,
+      status: "skip",
+      message: "Ad ve Soyad zorunludur, bu satır atlanacak.",
+    };
+  }
+
+  if (blockName) {
+    const block = blocks.find((b) => b.name.toLowerCase() === blockName.toLowerCase());
+    if (!block) {
+      return {
+        ...base,
+        status: "warning",
+        message: `"${blockName}" adlı blok bulunamadı. Sakin oluşturulacak ama daireye atanmayacak.`,
+      };
+    }
+    if (unitNumber) {
+      const unit = units.find(
+        (u) => u.block_id === block.id && u.unit_number.toLowerCase() === unitNumber.toLowerCase()
+      );
+      if (!unit) {
+        return {
+          ...base,
+          status: "warning",
+          message: `"${blockName} — ${unitNumber}" dairesi bulunamadı. Sakin oluşturulacak ama daireye atanmayacak.`,
+        };
+      }
+      return {
+        ...base,
+        status: "ready",
+        message: "Hazır, daireye atanacak.",
+        resolvedUnitId: unit.id,
+      };
+    }
+    return {
+      ...base,
+      status: "ready",
+      message: "Blok girildi ama Daire No boş, sadece sakin oluşturulacak.",
+    };
+  }
+
+  return { ...base, status: "ready", message: "Hazır." };
+}
+
 export default function ResidentsPage() {
   const { selectedSiteId, canWrite } = useAidat();
 
@@ -94,6 +239,14 @@ export default function ResidentsPage() {
   const [moveOutTargetId, setMoveOutTargetId] = useState<string | null>(null);
   const [moveOutDate, setMoveOutDate] = useState(todayStr());
   const [moveOutSaving, setMoveOutSaving] = useState(false);
+
+  // Excel bulk-import state
+  const [parsedRows, setParsedRows] = useState<ParsedResidentRow[]>([]);
+  const [bulkParsing, setBulkParsing] = useState(false);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkImportSummary | null>(null);
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
 
   const blocksById = new Map(blocks.map((b) => [b.id, b]));
 
@@ -278,6 +431,102 @@ export default function ResidentsPage() {
     await Promise.all([loadOccupancies(expandedId), loadResidents()]);
   }
 
+  async function handleBulkFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    setBulkError(null);
+    setBulkResult(null);
+    setParsedRows([]);
+    setBulkParsing(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const sheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
+      if (!sheet) {
+        throw new Error("Excel dosyasında okunabilir bir sayfa bulunamadı.");
+      }
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      const rows = rawRows.map((raw, idx) => buildParsedRow(raw, idx, blocks, units));
+      if (rows.length === 0) {
+        setBulkError("Dosyada satır bulunamadı. Lütfen şablonu kullanarak en az bir sakin satırı ekleyin.");
+      }
+      setParsedRows(rows);
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : "Dosya okunamadı. Lütfen .xlsx/.xls formatında yükleyin.");
+    } finally {
+      setBulkParsing(false);
+    }
+  }
+
+  function handleCancelBulkPreview() {
+    setParsedRows([]);
+    setBulkError(null);
+  }
+
+  async function handleImportRows() {
+    if (!selectedSiteId || !canWrite) return;
+    const readyRows = parsedRows.filter((r) => r.status !== "skip");
+    const skippedInvalid = parsedRows.length - readyRows.length;
+    if (readyRows.length === 0) return;
+
+    setBulkImporting(true);
+    setBulkError(null);
+    setBulkResult(null);
+    setImportProgress({ done: 0, total: readyRows.length });
+
+    let created = 0;
+    let unassigned = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < readyRows.length; i++) {
+      const row = readyRows[i];
+      const { data: insertedResident, error: insertError } = await supabase
+        .from("residents")
+        .insert({
+          site_id: selectedSiteId,
+          first_name: row.firstName,
+          last_name: row.lastName,
+          phone: row.phone || null,
+          email: row.email || null,
+          active: true,
+        })
+        .select("id")
+        .single();
+
+      const residentId = (insertedResident as { id: string } | null)?.id;
+      if (insertError || !residentId) {
+        errors.push(`${row.firstName} ${row.lastName} (satır ${row.rowNumber}): ${insertError?.message ?? "kaydedilemedi"}`);
+        setImportProgress({ done: i + 1, total: readyRows.length });
+        continue;
+      }
+      created++;
+
+      if (row.resolvedUnitId) {
+        const { error: linkError } = await supabase.from("unit_residents").insert({
+          unit_id: row.resolvedUnitId,
+          resident_id: residentId,
+          relationship_type: row.relationship,
+          is_primary: false,
+          start_date: todayStr(),
+        });
+        if (linkError) unassigned++;
+      } else if (row.status === "warning") {
+        unassigned++;
+      }
+
+      setImportProgress({ done: i + 1, total: readyRows.length });
+    }
+
+    setBulkImporting(false);
+    setImportProgress(null);
+    setBulkResult({ created, skippedInvalid, unassigned, errors });
+    setParsedRows([]);
+    await loadResidents();
+  }
+
   // Group active occupancies by unit for a site-wide "who lives where" view.
   const residentsById = new Map(residents.map((r) => [r.id, r]));
   const activeResidentsByUnit = new Map<string, { name: string; relationship: RelationshipType; isPrimary: boolean }[]>();
@@ -289,8 +538,132 @@ export default function ResidentsPage() {
     activeResidentsByUnit.set(occ.unit_id, list);
   }
 
+  const readyCount = parsedRows.filter((r) => r.status === "ready").length;
+  const warningCount = parsedRows.filter((r) => r.status === "warning").length;
+  const skipCount = parsedRows.filter((r) => r.status === "skip").length;
+
   return (
     <div>
+      {canWrite && (
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Excel ile Toplu Yükle</div>
+          </div>
+
+          <div className="auth-info" style={{ marginBottom: 14 }}>
+            Sakinlerinizi tek tek girmek yerine, elinizdeki listeyi Excel şablonuna aktarıp buradan toplu
+            olarak yükleyebilirsiniz. Önce şablonu indirin, doldurun, sonra dosyayı seçip önizlemeden
+            onaylayın.
+          </div>
+
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 14 }}>
+            <button type="button" className="btn-secondary" onClick={handleDownloadTemplate}>
+              Excel Şablonu İndir
+            </button>
+            <label className="auth-field" style={{ flex: "1 1 240px", minWidth: 240 }}>
+              <span>Excel Dosyası Seç (.xlsx / .xls)</span>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleBulkFileSelected}
+                disabled={bulkParsing || bulkImporting}
+              />
+            </label>
+          </div>
+
+          {bulkParsing && <div className="empty-state">Dosya okunuyor…</div>}
+          {bulkError && <div className="auth-error">{bulkError}</div>}
+
+          {parsedRows.length > 0 && (
+            <>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
+                <span className="pill pill-green">{readyCount} hazır</span>
+                <span className="pill pill-amber">{warningCount} uyarı</span>
+                <span className="pill pill-coral">{skipCount} atlanacak</span>
+              </div>
+              <div className="table-scroll" style={{ marginBottom: 14 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Satır</th>
+                      <th>Durum</th>
+                      <th>Ad Soyad</th>
+                      <th>Telefon</th>
+                      <th className="wrap">E-posta</th>
+                      <th>Blok</th>
+                      <th>Daire No</th>
+                      <th>İlişki</th>
+                      <th className="wrap">Not</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parsedRows.map((row) => (
+                      <tr key={row.rowNumber}>
+                        <td>{row.rowNumber}</td>
+                        <td>
+                          {row.status === "ready" && <span className="pill pill-green">Hazır</span>}
+                          {row.status === "warning" && <span className="pill pill-amber">Uyarı</span>}
+                          {row.status === "skip" && <span className="pill pill-coral">Atlanacak</span>}
+                        </td>
+                        <td className="wrap">
+                          {row.firstName} {row.lastName}
+                        </td>
+                        <td>{row.phone || "—"}</td>
+                        <td className="wrap">{row.email || "—"}</td>
+                        <td>{row.blockName || "—"}</td>
+                        <td>{row.unitNumber || "—"}</td>
+                        <td>{RELATIONSHIP_LABELS[row.relationship]}</td>
+                        <td className="wrap">{row.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {importProgress && (
+                <div className="empty-state">
+                  İçe aktarılıyor… ({importProgress.done}/{importProgress.total})
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleImportRows}
+                  disabled={bulkImporting || readyCount + warningCount === 0}
+                >
+                  {bulkImporting ? "Kaydediliyor…" : `İçe Aktar (${readyCount + warningCount})`}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleCancelBulkPreview}
+                  disabled={bulkImporting}
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </>
+          )}
+
+          {bulkResult && (
+            <div className="auth-info" style={{ marginTop: 14 }}>
+              {bulkResult.created} sakin oluşturuldu, {bulkResult.skippedInvalid} satır atlandı (Ad/Soyad
+              eksik), {bulkResult.unassigned} sakin daireye atanamadı (blok/daire bulunamadı, sonradan
+              manuel atayabilirsiniz).
+              {bulkResult.errors.length > 0 && (
+                <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+                  {bulkResult.errors.map((msg, i) => (
+                    <li key={i}>{msg}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">Sakinler</div>

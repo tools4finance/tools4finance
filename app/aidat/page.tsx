@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
+import { seedDemoData, type SeedSummary } from "@/lib/seedDemoData";
 
 const currency = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
@@ -10,9 +11,10 @@ function formatPercent(value: number) {
   return `${value.toFixed(1)}%`;
 }
 
-type ExpenseCategoryJoin = { opex_capex: string | null };
+type ExpenseCategoryJoin = { main_segment: string | null; opex_capex: string | null };
 type ExpenseWithCategory = { amount: number; expense_category: ExpenseCategoryJoin | ExpenseCategoryJoin[] | null };
-type BudgetLineWithCategory = { budget_amount: number; expense_category: ExpenseCategoryJoin | ExpenseCategoryJoin[] | null };
+type BudgetLineCategoryJoin = { opex_capex: string | null };
+type BudgetLineWithCategory = { budget_amount: number; expense_category: BudgetLineCategoryJoin | BudgetLineCategoryJoin[] | null };
 type AccrualJoin = { fiscal_period_id: string | null; site_id: string; status: string };
 type PaymentJoin = { status: string };
 type AllocationWithJoins = {
@@ -20,6 +22,16 @@ type AllocationWithJoins = {
   accruals: AccrualJoin | AccrualJoin[] | null;
   payments: PaymentJoin | PaymentJoin[] | null;
 };
+
+// expense_category comes back from the PostgREST embed as either a single
+// object or a one-element array depending on the inferred relationship
+// cardinality — normalise it here rather than at every call site.
+function firstJoin<T>(value: T | T[] | null): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+}
+
+type ExpenseSegment = { segment: string; amount: number };
 
 type DashboardData = {
   periodExists: boolean;
@@ -31,6 +43,7 @@ type DashboardData = {
   outstandingTotal: number;
   debtorCount: number;
   budgetOpexTotal: number;
+  expenseSegments: ExpenseSegment[];
 };
 
 const EMPTY_DATA: DashboardData = {
@@ -43,14 +56,25 @@ const EMPTY_DATA: DashboardData = {
   outstandingTotal: 0,
   debtorCount: 0,
   budgetOpexTotal: 0,
+  expenseSegments: [],
 };
 
+// Cycles through the app's chart color tokens; anything past this many
+// distinct segments is folded into a muted "Diğer" slice.
+const PIE_COLORS = ["var(--blue)", "var(--purple)", "var(--coral)", "var(--amber)", "var(--green)"];
+const PIE_OTHER_COLOR = "var(--text3)";
+
 export default function AidatDashboardPage() {
-  const { selectedSiteId, year, month } = useAidat();
+  const { selectedSiteId, year, month, canWrite } = useAidat();
 
   const [data, setData] = useState<DashboardData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unitsCount, setUnitsCount] = useState<number | null>(null);
+
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<SeedSummary | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!selectedSiteId) return;
@@ -70,6 +94,14 @@ export default function AidatDashboardPage() {
       const balances = (balancesRes.data ?? []) as { unit_id: string; balance: number }[];
       const outstandingTotal = balances.filter((b) => b.balance > 0).reduce((s, b) => s + b.balance, 0);
       const debtorCount = balances.filter((b) => b.balance > 0.01).length;
+
+      // Used only to decide whether to surface the demo-data seeder
+      // prominently (brand-new, empty site) or tucked into a small panel.
+      const unitsCountRes = await supabase
+        .from("units")
+        .select("id", { count: "exact", head: true })
+        .eq("site_id", selectedSiteId);
+      if (!unitsCountRes.error) setUnitsCount(unitsCountRes.count ?? 0);
 
       // Resolve (but do not create) the fiscal_periods row for the selected
       // month. This page is read-only, so we deliberately avoid calling the
@@ -103,7 +135,7 @@ export default function AidatDashboardPage() {
           .eq("status", "active"),
         supabase
           .from("expenses")
-          .select("amount, expense_category:expense_categories!inner(opex_capex)")
+          .select("amount, expense_category:expense_categories!inner(main_segment, opex_capex)")
           .eq("site_id", selectedSiteId)
           .eq("fiscal_period_id", periodId)
           .eq("status", "active")
@@ -150,8 +182,26 @@ export default function AidatDashboardPage() {
       if (allocRes.error) throw allocRes.error;
 
       const accrued = ((accrualsRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + r.amount, 0);
-      const opexTotal = ((opexRes.data ?? []) as ExpenseWithCategory[]).reduce((s, r) => s + r.amount, 0);
+      const opexRows = (opexRes.data ?? []) as ExpenseWithCategory[];
+      const opexTotal = opexRows.reduce((s, r) => s + r.amount, 0);
       const capexTotal = ((capexRes.data ?? []) as ExpenseWithCategory[]).reduce((s, r) => s + r.amount, 0);
+
+      // Group OPEX expenses by main_segment for the "Gider Dağılımı" pie
+      // chart, largest first; anything past the top 5 (one per color token)
+      // is folded into a single "Diğer" slice so the legend stays readable.
+      const segmentTotals = new Map<string, number>();
+      for (const row of opexRows) {
+        const cat = firstJoin(row.expense_category);
+        const segment = cat?.main_segment ?? "Diğer";
+        segmentTotals.set(segment, (segmentTotals.get(segment) ?? 0) + row.amount);
+      }
+      const sortedSegments = Array.from(segmentTotals.entries())
+        .map(([segment, amount]) => ({ segment, amount }))
+        .sort((a, b) => b.amount - a.amount);
+      const topSegments = sortedSegments.slice(0, PIE_COLORS.length);
+      const otherTotal = sortedSegments.slice(PIE_COLORS.length).reduce((s, r) => s + r.amount, 0);
+      const expenseSegments: ExpenseSegment[] =
+        otherTotal > 0 ? [...topSegments, { segment: "Diğer", amount: otherTotal }] : topSegments;
       const otherIncomeTotal = ((incomesRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + r.amount, 0);
       const budgetOpexTotal = ((budgetRes.data ?? []) as BudgetLineWithCategory[]).reduce(
         (s, r) => s + r.budget_amount,
@@ -169,6 +219,7 @@ export default function AidatDashboardPage() {
         outstandingTotal,
         debtorCount,
         budgetOpexTotal,
+        expenseSegments,
       });
       setLoading(false);
     } catch (err) {
@@ -180,6 +231,27 @@ export default function AidatDashboardPage() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  async function handleSeedDemoData() {
+    if (!selectedSiteId || !canWrite || seeding) return;
+    const confirmed = window.confirm(
+      "Bu işlem seçili siteye örnek bloklar, daireler, sakinler, tahakkuk, tahsilat, gider, gelir ve bütçe kayıtları ekleyecek (gerçek veritabanı yazımı). Devam edilsin mi?"
+    );
+    if (!confirmed) return;
+
+    setSeeding(true);
+    setSeedError(null);
+    setSeedResult(null);
+    try {
+      const result = await seedDemoData(selectedSiteId, year, month);
+      setSeedResult(result);
+      await fetchAll();
+    } catch (err) {
+      setSeedError(err instanceof Error ? err.message : "Örnek veri oluşturulurken hata oluştu.");
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   if (loading) {
     return <div className="empty-state">Yükleniyor…</div>;
@@ -194,6 +266,7 @@ export default function AidatDashboardPage() {
     outstandingTotal,
     debtorCount,
     budgetOpexTotal,
+    expenseSegments,
   } = data;
 
   const collectionRate = accrued > 0 ? (collected / accrued) * 100 : null;
@@ -211,9 +284,65 @@ export default function AidatDashboardPage() {
     debtorCount === 0 &&
     budgetOpexTotal === 0;
 
+  const expenseTotal = expenseSegments.reduce((s, r) => s + r.amount, 0);
+  const pieSlices = expenseSegments.map((seg, i) => ({
+    ...seg,
+    color: seg.segment === "Diğer" && i === expenseSegments.length - 1 && expenseSegments.length > PIE_COLORS.length
+      ? PIE_OTHER_COLOR
+      : PIE_COLORS[i % PIE_COLORS.length],
+    pct: expenseTotal > 0 ? (seg.amount / expenseTotal) * 100 : 0,
+  }));
+  let cumulativePct = 0;
+  const conicStops = pieSlices
+    .map((seg) => {
+      const from = cumulativePct;
+      cumulativePct += seg.pct;
+      return `${seg.color} ${from}% ${cumulativePct}%`;
+    })
+    .join(", ");
+  const isNewSite = unitsCount === 0;
+
   return (
     <div>
       {error && <div className="auth-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+      {canWrite && (
+        <div className="panel" style={isNewSite ? { borderColor: "var(--accent)" } : undefined}>
+          <div className="panel-header">
+            <div className="panel-title">
+              {isNewSite ? "Bu site henüz boş — örnek verilerle doldurun" : "Geliştirici / Demo"}
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14, lineHeight: 1.6 }}>
+            Tek tek daire, sakin, tahakkuk ve tahsilat girmek yerine; 3 blok, 24 daire, ~20-24 sakin ve son 6 aya
+            yayılan tahakkuk / tahsilat / gider / gelir / bütçe kayıtlarını rastgele ama gerçekçi verilerle tek
+            tıkla oluşturun. Bu, seçili siteye gerçek veritabanı kayıtları ekler.
+          </p>
+          <button className="btn-primary" onClick={handleSeedDemoData} disabled={seeding}>
+            {seeding ? "Oluşturuluyor…" : "Örnek Veri ile Doldur"}
+          </button>
+
+          {seedError && (
+            <div className="auth-error" style={{ marginTop: 12 }}>
+              {seedError}
+            </div>
+          )}
+
+          {seedResult && (
+            <div className="auth-info" style={{ marginTop: 12, lineHeight: 1.7 }}>
+              {seedResult.blocksCreated} blok, {seedResult.unitsCreated} daire, {seedResult.residentsCreated} sakin,{" "}
+              {seedResult.accrualsCreated} tahakkuk, {seedResult.paymentsCreated} tahsilat,{" "}
+              {seedResult.expensesCreated} gider, {seedResult.incomesCreated} gelir, {seedResult.budgetLinesCreated}{" "}
+              bütçe satırı oluşturuldu.
+              {seedResult.warnings.length > 0 && (
+                <div style={{ marginTop: 6, color: "var(--amber)" }}>
+                  Uyarılar: {seedResult.warnings.join(" ")}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {allZero && (
         <div className="empty-state" style={{ marginBottom: 16 }}>

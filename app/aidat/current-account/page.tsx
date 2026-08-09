@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 
@@ -61,8 +62,29 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("tr-TR");
 }
 
+function slugify(text: string) {
+  return text
+    .toLocaleLowerCase("tr")
+    .replace(/ı/g, "i")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export default function CurrentAccountPage() {
-  const { selectedSiteId } = useAidat();
+  const { selectedSiteId, selectedSite } = useAidat();
 
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -188,6 +210,113 @@ export default function CurrentAccountPage() {
     });
   }, [entries]);
 
+  const handleExportExcel = useCallback(() => {
+    if (entries.length === 0 || !selectedUnitId) return;
+
+    const today = new Date();
+    const generatedLabel = today.toLocaleDateString("tr-TR");
+    const unit = unitLabel(selectedUnitId);
+
+    const rows: (string | number)[][] = [
+      [selectedSite?.site.name ?? "Site"],
+      [unit],
+      ["Hesap Ekstresi"],
+      [`Oluşturma Tarihi: ${generatedLabel}`],
+      [],
+      ["Tarih", "Tür", "Açıklama", "Tutar", "Bakiye"],
+      ...entriesWithRunningBalance.map((e) => [
+        formatDate(e.entry_date),
+        ENTRY_TYPE_LABELS[e.entry_type],
+        e.description ?? "",
+        e.amount,
+        e.running,
+      ]),
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    worksheet["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 14 }, { wch: 14 }];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ekstre");
+
+    const datePart = today.toISOString().slice(0, 10).replace(/-/g, "");
+    XLSX.writeFile(workbook, `ekstre-${slugify(unit)}-${datePart}.xlsx`);
+  }, [entries.length, selectedUnitId, selectedSite, unitLabel, entriesWithRunningBalance]);
+
+  const handleExportPdf = useCallback(() => {
+    if (entries.length === 0 || !selectedUnitId) return;
+
+    const today = new Date();
+    const generatedLabel = today.toLocaleDateString("tr-TR");
+    const unit = unitLabel(selectedUnitId);
+    const siteName = selectedSite?.site.name ?? "";
+    const siteAddress = selectedSite?.site.address ?? "";
+
+    const rowsHtml = entriesWithRunningBalance
+      .map(
+        (e) => `<tr>
+          <td>${escapeHtml(formatDate(e.entry_date))}</td>
+          <td>${escapeHtml(ENTRY_TYPE_LABELS[e.entry_type])}</td>
+          <td>${escapeHtml(e.description ?? "—")}</td>
+          <td class="num">${escapeHtml(formatSignedCurrency(e.amount))}</td>
+          <td class="num">${escapeHtml(formatCurrency(e.running))}</td>
+        </tr>`
+      )
+      .join("");
+
+    const html = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<title>Ekstre - ${escapeHtml(unit)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #111; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 16px 0 4px; font-weight: 600; color: #222; }
+  .meta { font-size: 12px; color: #555; margin-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; text-align: left; }
+  th { background: #f0f0f0; }
+  td.num, th.num { text-align: right; }
+  @media print {
+    body { padding: 0; }
+  }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(siteName)}</h1>
+  ${siteAddress ? `<div class="meta">${escapeHtml(siteAddress)}</div>` : ""}
+  <h2>Hesap Ekstresi — ${escapeHtml(unit)}</h2>
+  <div class="meta">Oluşturma Tarihi: ${escapeHtml(generatedLabel)}</div>
+  <div class="meta">Güncel Bakiye: ${escapeHtml(formatCurrency(balance ?? 0))}</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Tarih</th>
+        <th>Tür</th>
+        <th>Açıklama</th>
+        <th class="num">Tutar</th>
+        <th class="num">Bakiye</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  }, [entries.length, selectedUnitId, selectedSite, unitLabel, entriesWithRunningBalance, balance]);
+
   if (loadingUnits) {
     return <div className="empty-state">Yükleniyor…</div>;
   }
@@ -278,7 +407,31 @@ export default function CurrentAccountPage() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Hesap Ekstresi</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={entries.length === 0}
+                  onClick={handleExportExcel}
+                >
+                  Excel İndir
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={entries.length === 0}
+                  onClick={handleExportPdf}
+                >
+                  PDF İndir
+                </button>
+              </div>
             </div>
+
+            {entries.length > 0 && (
+              <div className="kpi-sub" style={{ marginBottom: 12 }}>
+                E-posta ile gönderme özelliği yakında eklenecek.
+              </div>
+            )}
 
             {entries.length === 0 ? (
               <div className="empty-state">Bu daire için hesap hareketi yok.</div>
