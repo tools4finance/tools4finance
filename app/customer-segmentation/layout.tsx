@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 const NAV_ITEMS = [
   { href: "/customer-segmentation", label: "Dashboard" },
   { href: "/customer-segmentation/customers", label: "Müşteriler" },
+  { href: "/customer-segmentation/scorecard", label: "Tekil Skor Hesapla" },
   { href: "/customer-segmentation/parameters", label: "Parametreler" },
 ];
 

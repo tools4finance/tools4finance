@@ -67,7 +67,7 @@ export function DonutChart({
 
   return (
     <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "center" }}>
-      <div style={{ position: "relative", width: 200, maxWidth: "100%", flexShrink: 0, margin: "0 auto" }}>
+      <div style={{ position: "relative", width: 200, maxWidth: "100%", flexShrink: 0 }}>
         <svg viewBox={`0 0 ${size} ${size}`} style={{ width: "100%", height: "auto", display: "block" }}>
           {withRanges.map((s) => (
             <path key={s.key} d={arcPath(cx, cy, rOuter, rInner, s.start, s.end)} fill={s.color}>
