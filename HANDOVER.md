@@ -100,6 +100,23 @@ HR Performance Management Systems Expert persona'sıyla (`.claude/hr-performance
 8. **Kişi bazlı ağırlık override UI'ı** (`KPI_period_member_weights` tablosu şemada zaten var ama hiç UI'ı yok) — önceki oturumda da not edilmişti, hâlâ yapılmadı.
 9. **`lib/aidatContext.tsx`'teki aynı sınıf "filtresiz üyelik sorgusu" bug'ı** (yukarıdaki madde 1'e bak) — kapsam dışı (aidat modülüne dokunulmadı) ama flag'lendi, ayrı bir görev olarak ele alınmalı.
 
+## Ölçülebilir hedefler: hedef/gerçekleşen bazlı gerçekleşme % hesaplama (commit `05758d7`)
+
+Kullanıcı isteği: "Ciro Hedefi" gibi bir hedef numerik olmalı, yön (yüksek/düşük iyi) seçilebilmeli, gerçekleşen değer girilince gerçekleşme % **hesaplanmalı**, elle yazılmamalı. LTIFR gibi ters metrikler de var (0 = en iyi, düşük iyi) — hedef %1, gerçekleşen %0,5 ise hedef tutulmuş sayılmalı (naif oran değil, %100).
+
+**Şema** (`supabase/migrations/20260810000008_kpi_goal_targets.sql`): `KPI_company_goals` ve `KPI_individual_goals`'a 4 nullable kolon eklendi — `direction` (`higher_better`/`lower_better`), `target_value`, `actual_value`, `unit` (serbest metin — HR persona dokümanının uyarısı gereği sabit bir enum yapılmadı, birim çok çeşitli). Tamamen opsiyonel/ek: `target_value` boşsa eski manuel yüzde girişi aynen çalışmaya devam eder (mevcut demo verisi ve nitel/milestone tipi hedefler etkilenmedi).
+
+**Formül** (`lib/kpiScoring.ts`, `computeAchievementPct`):
+- `higher_better`: `clamp(actual/target*100, 0, 100)` — örn. ciro hedef 1.000.000 / gerçekleşen 800.000 → %80.
+- `lower_better`: `clamp(target/actual*100, 0, 100)`, `actual=0` her zaman %100 (sıfırdan iyisi olamaz), `target=0` (sıfır tolerans metriği) sadece `actual=0` ise %100 olur — örn. **LTIFR hedef %1 / gerçekleşen %0,5 → %100 ("hedef tutuldu")**, gerçekleşen %1,5 → %66,7.
+- Hesaplanan değer, mevcut `achievement_pct`/`self_rating` kolonuna yazılıyor — `lib/kpiScoring.ts`'deki ağırlıklandırma formülü (`individualScore`/`companyScore`/`finalScore`) hiç değişmedi, sadece bu sayının nereden geldiği değişti.
+
+**Sahiplik**: `KPI_individual_goals`'da `direction`/`target_value`/`unit`, `weight_pct`/`title` ile aynı "yapısal" kilit grubunda (yönetici puanladıktan sonra donuyor — `kpi_guard_individual_goal_fields` güncellendi). `actual_value`, `self_rating`/`self_comment` ile aynı kilitsiz grupta (değerlendirmeden sonra da düzenlenebilir, çünkü puanı artık etkilemiyor). Bilinçli tasarım kararı: yöneticiye ayrı bir "kendi actual_value'su" verilmedi — yönetici, çalışanın hesaplanan gerçekleşmesini (hedef/gerçekleşen/yön formülüyle birlikte) görüp `manager_rating` ile isterse override ediyor, aynı bugünkü self_rating/manager_rating ilişkisi gibi. Ayrı bir paralel "yöneticinin kendi gerçekleşen değeri" alanı gerçek bir kalibrasyon-workflow özelliği, bu MVP'nin kapsamı dışında.
+
+**UI**: `app/kpi-tracker/my-goals/page.tsx` (çalışan: hedef ekleme formunda opsiyonel Yön/Hedef Değer/Birim; hedefi olan satırlarda "Gerçekleşme %" alanı yerine "Gerçekleşen Değer" girişi + hesaplanan % gösterimi), `app/kpi-tracker/periods/[id]/page.tsx` (İK: şirket hedefi tanımlarken aynı opsiyonel alanlar), `app/kpi-tracker/results/page.tsx` (İK: hedefi olan şirket hedeflerinde gerçekleşen değer girişi + hesaplanan %; bireysel hedeflerde hedef/gerçekleşen bilgisi görüntüleniyor).
+
+Formül `node -e` ile elle doğrulandı (LTIFR örneği dahil) — build temiz, push edildi.
+
 ## Not: topbar deseni değişti (commit `edfac11`, bu handover'dan önce)
 
 `app/aidat/layout.tsx` ve `app/customer-segmentation/layout.tsx`'teki topbar artık eski `.nav-logo` (34px ikon) + `.nav-name` yerine şunu kullanıyor — yeni modül eklerken bu deseni takip et:
