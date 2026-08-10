@@ -284,33 +284,12 @@ export type DefaultCriterionTemplate = {
   bands?: Omit<Band, "id" | "criterion_id">[];
 };
 
+// Risk Class was deliberately removed from the suggested template (2026-08-10,
+// explicit product decision) — it's not disabled or hidden, it simply isn't
+// part of what new users/the "load defaults" action start from anymore. A
+// user can still add a lookup-type criterion reading risk_class themselves
+// if they want one; the engine has never special-cased it.
 export const DEFAULT_CRITERIA_TEMPLATE: DefaultCriterionTemplate[] = [
-  {
-    criterion: {
-      label: "Risk Class (Credit Reform)",
-      source_field: "risk_class",
-      formula_type: "lookup",
-      direction: null,
-      linear_min: null,
-      linear_max: null,
-      weight: 25,
-      active: true,
-      display_order: 0,
-      description: "Risk Class (AAA/BBB/CCC/DDD…) puanı. Örnek bir kriterdir — tamamen silinebilir.",
-    },
-    lookupValues: [
-      { match_value: "MMM", points: 25, special_rule: "force_100", description: "Major müşteri — direkt 100 puan", display_order: 0 },
-      { match_value: "GGG", points: 25, special_rule: "force_100", description: "Kamu müşterisi — direkt 100 puan", display_order: 1 },
-      { match_value: "AAA", points: 25, special_rule: null, description: "En iyi CR notu (100-175)", display_order: 2 },
-      { match_value: "BBB", points: 20, special_rule: null, description: "İyi CR notu (176-275)", display_order: 3 },
-      { match_value: "CCC", points: 10, special_rule: null, description: "Orta CR notu (276-325)", display_order: 4 },
-      { match_value: "DDD", points: 5, special_rule: null, description: "Riskli CR notu (326-600)", display_order: 5 },
-      { match_value: "SSS", points: 0, special_rule: "force_0", description: "Limit gelmedi — sıfır puan", display_order: 6 },
-      { match_value: "NNB", points: 0, special_rule: "force_0", description: "Yeni müşteri — sıfır puan", display_order: 7 },
-      { match_value: "LLL", points: 0, special_rule: "force_0", description: "Yasal takip — sıfır puan", display_order: 8 },
-      { match_value: "NNN", points: 0, special_rule: "force_0", description: "Uzun aradan dönen — sıfır puan", display_order: 9 },
-    ],
-  },
   {
     criterion: {
       label: "Overdue Rate",
@@ -321,7 +300,7 @@ export const DEFAULT_CRITERIA_TEMPLATE: DefaultCriterionTemplate[] = [
       linear_max: 1,
       weight: 25,
       active: true,
-      display_order: 1,
+      display_order: 0,
       description: "Vadesi geçmiş oran. Lineer: Puan = Ağırlık × (1 − oran).",
     },
   },
@@ -335,7 +314,7 @@ export const DEFAULT_CRITERIA_TEMPLATE: DefaultCriterionTemplate[] = [
       linear_max: null,
       weight: 30,
       active: true,
-      display_order: 2,
+      display_order: 1,
       description: "Vadesi geçmiş gün sayısı (DSO − Sales Term). Aralık tablosundan okunur.",
     },
     bands: [
@@ -356,7 +335,7 @@ export const DEFAULT_CRITERIA_TEMPLATE: DefaultCriterionTemplate[] = [
       linear_max: null,
       weight: 5,
       active: true,
-      display_order: 3,
+      display_order: 2,
       description: "Müşteri ile çalışılan yıl sayısına göre kademeli puan.",
     },
     bands: [
@@ -375,7 +354,7 @@ export const DEFAULT_CRITERIA_TEMPLATE: DefaultCriterionTemplate[] = [
       linear_max: null,
       weight: 10,
       active: true,
-      display_order: 4,
+      display_order: 3,
       description: "Ödeme alışkanlığı etiketi.",
     },
     lookupValues: [
@@ -394,7 +373,7 @@ export const DEFAULT_CRITERIA_TEMPLATE: DefaultCriterionTemplate[] = [
       linear_max: null,
       weight: 5,
       active: true,
-      display_order: 5,
+      display_order: 4,
       description: "Stratejik müşteri. Yes=ağırlık, No=0.",
     },
     lookupValues: [
