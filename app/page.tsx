@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
+import FxRatesPanel from "@/components/FxRatesPanel";
 import { useLang, t as pick } from "@/lib/i18n";
 
 const STRINGS = {
@@ -36,6 +37,9 @@ const STRINGS = {
     bottomSub: "IFRS Reporting ile başlayın ya da Site Bütçe Yönetimi ile aidat/bütçe takibinizi dijitalleştirin.",
     bottomCta: "Site Bütçe Yönetimi'ni incele",
     contact: "İletişim",
+    fxEyebrow: "Ücretsiz Araç",
+    fxTitle: "TCMB Kurlar",
+    fxSub: "Bugünün alış/satış kurları ve seçtiğiniz tarih aralığı için birden fazla para biriminde dönem ortalaması — TCMB'nin resmi günlük bültenlerinden, giriş yapmadan.",
   },
   en: {
     eyebrow: "A Toolkit For Finance Teams",
@@ -68,6 +72,9 @@ const STRINGS = {
     bottomSub: "Start with IFRS Reporting, or digitize your dues/budget tracking with Site Budget Management.",
     bottomCta: "Explore Site Budget Management",
     contact: "Contact",
+    fxEyebrow: "Free Tool",
+    fxTitle: "TCMB Exchange Rates",
+    fxSub: "Today's buying/selling rates and a multi-currency period average for any date range you pick — straight from the Central Bank of Türkiye's official daily bulletins, no login required.",
   },
 };
 
@@ -201,6 +208,19 @@ export default function HomePage() {
             </div>
           </Link>
         </div>
+      </section>
+
+      <section className="products-section">
+        <div className="hero-eyebrow">
+          <span></span> {s.fxEyebrow}
+        </div>
+        <h2 style={{ fontSize: 24, fontWeight: 300, letterSpacing: "-0.02em", color: "var(--text)", marginBottom: 10 }}>
+          {s.fxTitle}
+        </h2>
+        <p style={{ fontSize: 14, color: "var(--text2)", maxWidth: 640, lineHeight: 1.7, marginBottom: 28 }}>
+          {s.fxSub}
+        </p>
+        <FxRatesPanel />
       </section>
 
       <section className="bottom-section">

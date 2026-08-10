@@ -117,6 +117,21 @@ Kullanıcı isteği: "Ciro Hedefi" gibi bir hedef numerik olmalı, yön (yüksek
 
 Formül `node -e` ile elle doğrulandı (LTIFR örneği dahil) — build temiz, push edildi.
 
+## Kurlar (FX rates): dönem ortalama backfill hatası düzeltildi + herkese açık "TCMB Kurlar" widget'ı eklendi
+
+**Hata** (kullanıcı bildirdi): `app/aidat/rates/page.tsx`'teki "Dönem Ortalama Kur" paneli 2025-12-31 – 2026-01-01 aralığını seçince "TCMB kur verisi bulunamadı" veriyordu, oysa 31 Aralık bir iş günüydü. Kök neden veri değil, eksik bir yetenekti: `fx_rates` tablosu (global, site'a bağlı değil) sadece "Şimdi Güncelle" butonuyla (bugünün bülteni) ya da tek tek `?date=` ile dolduruluyordu — hiçbir zaman bir ARALIĞI toplu çekme yolu yoktu, o yüzden daha önce senkronize edilmemiş herhangi bir aralık boş dönüyordu.
+
+**Düzeltme**:
+- `lib/tcmbSync.ts` — TCMB bülten çekme/parse/upsert mantığı `app/api/fx-rates/tcmb-sync/route.ts`'ten buraya taşındı (iki route da paylaşıyor, kopyala-yapıştır yok).
+- Yeni `POST /api/fx-rates/tcmb-sync-range` — `{startDate, endDate}` alır, hafta sonlarını atlar (TCMB'de bülten yok), aralıkta zaten olan günleri atlar (tekrar aralıklarda ucuz), en fazla 186 gün (~6 ay, Vercel timeout'u aşmasın diye), 6'lı gruplar halinde eşzamanlı çekiyor. `maxDuration = 60`.
+- `app/aidat/rates/page.tsx`: ortalama hesaplaması 0 satır dönerse (canWrite kullanıcılar için) "TCMB'den Geçmiş Veri Çek" butonu çıkıyor, tıklanınca bulk-sync'i tetikleyip ortalamayı otomatik yeniden hesaplıyor.
+- **Doğrulandı**: yerelde `npm run dev` + `curl` ile tam olarak kullanıcının denediği aralık (2025-12-29 → 2026-01-02) çağrıldı, `{"fetched":5,"failed":0}` döndü, `select * from fx_rates where rate_date between ...` ile 31 Aralık'ın gerçek USD/EUR verisiyle geldiği doğrulandı. İkinci çağrıda zaten var olan günler atlandı (idempotent).
+
+**Herkese açık "TCMB Kurlar" widget'ı** (kullanıcı isteği — Kurlar sayfasının "fiili" kısmı, "Kur Tahmini" hariç, ana sayfaya da konsun):
+- `supabase/migrations/20260810000009_fx_rates_public_read.sql` — `fx_rates` SELECT policy'sine `anon` eklendi (yazma yetkisi authenticated'da kalmaya devam ediyor, sadece okuma açıldı — zaten TCMB'nin kendi sitesinde herkese açık veri).
+- `components/FxRatesPanel.tsx` — "Bugünün Kurları" + "Dönem Ortalama Kur" (artık **çoklu para birimi** checkbox ile seçilebiliyor, tek `<select>` değil — sonuç tablo halinde, her para birimi bir satır) ortak component olarak çıkarıldı, `canWrite` prop'una göre yazma butonları (Şimdi Güncelle / Geçmiş Veri Çek) gösterip gizliyor. `app/aidat/rates/page.tsx` artık bu component'i kullanıyor (Kur Tahmini bölümü dokunulmadı, ayrı/site-scoped kaldı). Ana sayfaya (`app/page.tsx`) `canWrite` vermeden (salt okunur) eklendi, TR/EN başlık/açıklama `lib/i18n.tsx`'teki mevcut desene uyuyor.
+- Not: `FxRatesPanel` component'inin kendi iç metinleri (tablo başlıkları vb.) hâlâ sabit Türkçe — sadece onu saran ana sayfa bölüm başlığı bilingual. Bu, sitenin geri kalanıyla tutarlı (modül içi sayfalar henüz tam bilingual değil, bkz. "Not: topbar deseni değişti" altındaki genel i18n notu).
+
 ## Not: topbar deseni değişti (commit `edfac11`, bu handover'dan önce)
 
 `app/aidat/layout.tsx` ve `app/customer-segmentation/layout.tsx`'teki topbar artık eski `.nav-logo` (34px ikon) + `.nav-name` yerine şunu kullanıyor — yeni modül eklerken bu deseni takip et:
