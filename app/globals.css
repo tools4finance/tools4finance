@@ -258,7 +258,11 @@ footer.site-footer { border-top: 0.5px solid var(--border); padding: 24px 40px; 
 
 /* ---- shared feature-page building blocks (used across aidat/* pages) ---- */
 
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+/* Fixed-width tracks (not `1fr`) so a handful of cards in a wide panel stay
+   a natural card width instead of stretching to fill the row — extra space
+   is left as trailing empty grid tracks, same "content width, not container
+   width" principle as the donut/legend and data-table width:auto fixes. */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 240px)); gap: 12px; margin-bottom: 24px; }
 .kpi-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 16px; }
 .kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; font-family: var(--font-dm-mono), monospace; margin-bottom: 8px; }
 .kpi-value { font-size: 22px; font-weight: 500; color: var(--text); letter-spacing: -0.01em; }
@@ -278,7 +282,9 @@ table.data-table tbody tr:hover { background: var(--bg2); }
 table.data-table td.wrap { white-space: normal; }
 table.data-table td.num, table.data-table th.num { text-align: right; }
 
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px; }
+/* Same fixed-track fix as .kpi-grid — a form with 2-3 fields in a wide
+   panel no longer stretches each input to fill the row. */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 320px)); gap: 14px; margin-bottom: 16px; }
 
 .btn-secondary { padding: 8px 16px; font-size: 13px; font-weight: 500; background: var(--surface); color: var(--text); border: 0.5px solid var(--border-strong); border-radius: 8px; cursor: pointer; }
 .btn-secondary:hover { border-color: var(--text3); }
