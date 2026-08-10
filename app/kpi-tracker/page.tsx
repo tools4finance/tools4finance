@@ -20,7 +20,7 @@ type IndividualGoal = { weight_pct: number; self_rating: number | null; manager_
 type OrgIndividualGoal = { member_id: string; manager_rating: number | null };
 
 export default function KpiDashboardPage() {
-  const { selectedMembership, memberships } = useKpi();
+  const { selectedMembership, memberships, canManage } = useKpi();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +98,9 @@ export default function KpiDashboardPage() {
 
   if (loading) {
     return <div className="empty-state">Yükleniyor…</div>;
+  }
+  if (!canManage) {
+    return <div className="empty-state">Bu sayfayı görüntüleme yetkiniz yok. Hedefleriniz için <Link href="/kpi-tracker/my-goals">Hedeflerim</Link> sayfasına gidin.</div>;
   }
 
   const currentPeriod = periods.find((p) => p.status !== "draft") ?? null;

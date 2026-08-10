@@ -10,13 +10,18 @@ import { useLang, t as pick } from "@/lib/i18n";
 
 const MODULE_TITLE = { tr: "Performans Yönetim Sistemi", en: "Performance Management" };
 
+// href === "/kpi-tracker/my-goals" is the only item every role sees — every
+// other item is HR-admin-only (each target page also enforces this itself
+// via a canManage guard, so hiding the link is a UX convenience, not the
+// actual access control).
 const NAV_ITEMS = [
-  { href: "/kpi-tracker", label: "Dashboard" },
-  { href: "/kpi-tracker/departments", label: "Departmanlar" },
-  { href: "/kpi-tracker/people", label: "Kişiler" },
-  { href: "/kpi-tracker/periods", label: "Dönemler" },
-  { href: "/kpi-tracker/my-goals", label: "Hedeflerim" },
-  { href: "/kpi-tracker/results", label: "Sonuçlar" },
+  { href: "/kpi-tracker", label: "Dashboard", adminOnly: true },
+  { href: "/kpi-tracker/departments", label: "Departmanlar", adminOnly: true },
+  { href: "/kpi-tracker/people", label: "Kişiler", adminOnly: true },
+  { href: "/kpi-tracker/periods", label: "Dönemler", adminOnly: true },
+  { href: "/kpi-tracker/reports", label: "Raporlar", adminOnly: true },
+  { href: "/kpi-tracker/my-goals", label: "Hedeflerim", adminOnly: false },
+  { href: "/kpi-tracker/results", label: "Sonuçlar", adminOnly: true },
 ];
 
 type Notification = { id: string; message: string; link: string | null; created_at: string; read_at: string | null };
@@ -188,12 +193,7 @@ function KpiShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const visibleNav = NAV_ITEMS.filter((item) => {
-    if (item.href === "/kpi-tracker/departments" || item.href === "/kpi-tracker/people" || item.href === "/kpi-tracker/results") {
-      return selectedMembership?.role === "hr_admin";
-    }
-    return true;
-  });
+  const visibleNav = NAV_ITEMS.filter((item) => !item.adminOnly || selectedMembership?.role === "hr_admin");
 
   return (
     <div className="aidat-page">

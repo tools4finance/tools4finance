@@ -80,6 +80,9 @@ export default function KpiPeriodsPage() {
   if (loading) {
     return <div className="empty-state">Yükleniyor…</div>;
   }
+  if (!canManage) {
+    return <div className="empty-state">Bu sayfayı görüntüleme yetkiniz yok.</div>;
+  }
 
   return (
     <div>

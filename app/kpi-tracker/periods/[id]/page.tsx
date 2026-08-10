@@ -173,6 +173,9 @@ export default function KpiPeriodDetailPage() {
   if (loading) {
     return <div className="empty-state">Yükleniyor…</div>;
   }
+  if (!canManage) {
+    return <div className="empty-state">Bu sayfayı görüntüleme yetkiniz yok.</div>;
+  }
   if (!period) {
     return <div className="empty-state">Dönem bulunamadı.</div>;
   }
