@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
+import TrDateInput from "@/components/TrDateInput";
 
 type Block = {
   id: string;
@@ -563,7 +564,7 @@ export default function PaymentsPage() {
               </label>
               <label className="auth-field">
                 <span>Tarih</span>
-                <input type="date" lang="tr" value={formDate} onChange={(e) => setFormDate(e.target.value)} required />
+                <TrDateInput value={formDate} onChange={setFormDate} required />
               </label>
               <label className="auth-field">
                 <span>Tutar</span>
@@ -807,11 +808,11 @@ export default function PaymentsPage() {
 
           <label className="auth-field">
             <span>Başlangıç Tarihi</span>
-            <input type="date" lang="tr" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+            <TrDateInput value={filterDateFrom} onChange={setFilterDateFrom} />
           </label>
           <label className="auth-field">
             <span>Bitiş Tarihi</span>
-            <input type="date" lang="tr" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+            <TrDateInput value={filterDateTo} onChange={setFilterDateTo} />
           </label>
         </div>
 

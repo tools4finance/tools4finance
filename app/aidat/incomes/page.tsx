@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
+import TrDateInput from "@/components/TrDateInput";
 
 type IncomeCategory = {
   id: string;
@@ -265,7 +266,7 @@ export default function IncomesPage() {
             </label>
             <label className="auth-field">
               <span>Tarih</span>
-              <input type="date" lang="tr" value={incomeDate} onChange={(e) => setIncomeDate(e.target.value)} required />
+              <TrDateInput value={incomeDate} onChange={setIncomeDate} required />
             </label>
             <label className="auth-field">
               <span>Tutar (TRY)</span>

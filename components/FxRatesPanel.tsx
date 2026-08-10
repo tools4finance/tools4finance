@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import TrDateInput from "@/components/TrDateInput";
 
 type Currency = "USD" | "EUR";
 const CURRENCIES: Currency[] = ["USD", "EUR"];
@@ -118,6 +119,14 @@ export default function FxRatesPanel({ canWrite = false }: { canWrite?: boolean 
   const handleComputeAverage = useCallback(async () => {
     if (selectedCurrencies.length === 0) {
       setAvgError("En az bir para birimi seçin.");
+      return;
+    }
+    if (!avgStart || !avgEnd) {
+      setAvgError("Geçerli bir başlangıç ve bitiş tarihi girin (gg.aa.yyyy).");
+      return;
+    }
+    if (avgStart > avgEnd) {
+      setAvgError("Başlangıç tarihi bitiş tarihinden sonra olamaz.");
       return;
     }
     setAvgLoading(true);
@@ -247,16 +256,11 @@ export default function FxRatesPanel({ canWrite = false }: { canWrite?: boolean 
           </label>
           <label className="auth-field">
             <span>Başlangıç Tarihi</span>
-            {/* lang="tr" makes Chromium render/parse this as gg.aa.yyyy instead
-                of falling back to the browser's default (often US MM/DD/YYYY)
-                — without it, typing a Turkish-ordered date like 31.12.2025
-                gets misread (day 31 as a month) and silently rejected, which
-                is what made picking any historical date look broken. */}
-            <input type="date" lang="tr" value={avgStart} onChange={(e) => setAvgStart(e.target.value)} max={avgEnd} />
+            <TrDateInput value={avgStart} onChange={setAvgStart} />
           </label>
           <label className="auth-field">
             <span>Bitiş Tarihi</span>
-            <input type="date" lang="tr" value={avgEnd} onChange={(e) => setAvgEnd(e.target.value)} min={avgStart} />
+            <TrDateInput value={avgEnd} onChange={setAvgEnd} />
           </label>
           <div style={{ display: "flex", alignItems: "flex-end" }}>
             <button className="btn-primary" onClick={handleComputeAverage} disabled={avgLoading}>

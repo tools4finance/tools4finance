@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
+import TrDateInput from "@/components/TrDateInput";
 
 type Resident = {
   id: string;
@@ -982,12 +983,7 @@ function ResidentOccupancyPanel({
           </label>
           <label className="auth-field">
             <span>Başlangıç Tarihi</span>
-            <input
-              type="date" lang="tr"
-              value={assignStartDate}
-              onChange={(e) => setAssignStartDate(e.target.value)}
-              required
-            />
+            <TrDateInput value={assignStartDate} onChange={setAssignStartDate} required />
           </label>
           <label className="auth-field">
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1046,17 +1042,7 @@ function ResidentOccupancyPanel({
                       {canWrite && isActive && (
                         moveOutTargetId === occ.id ? (
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <input
-                              type="date" lang="tr"
-                              value={moveOutDate}
-                              onChange={(e) => setMoveOutDate(e.target.value)}
-                              style={{
-                                padding: "6px 8px",
-                                fontSize: 12,
-                                border: "0.5px solid var(--border-strong)",
-                                borderRadius: 6,
-                              }}
-                            />
+                            <TrDateInput value={moveOutDate} onChange={setMoveOutDate} />
                             <button
                               className="btn-danger"
                               disabled={moveOutSaving}

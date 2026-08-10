@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
+import TrDateInput from "@/components/TrDateInput";
 
 type AccrualType = "monthly_dues" | "additional_dues" | "special_assessment" | "penalty" | "other";
 type AccrualStatus = "active" | "void";
@@ -506,19 +507,17 @@ export default function DuesPage() {
               </label>
               <label className="auth-field">
                 <span>Tahakkuk Tarihi</span>
-                <input
-                  type="date" lang="tr"
+                <TrDateInput
                   value={adhoc.accrual_date}
-                  onChange={(e) => setAdhoc((f) => ({ ...f, accrual_date: e.target.value }))}
+                  onChange={(v) => setAdhoc((f) => ({ ...f, accrual_date: v }))}
                   required
                 />
               </label>
               <label className="auth-field">
                 <span>Vade Tarihi</span>
-                <input
-                  type="date" lang="tr"
+                <TrDateInput
                   value={adhoc.due_date}
-                  onChange={(e) => setAdhoc((f) => ({ ...f, due_date: e.target.value }))}
+                  onChange={(v) => setAdhoc((f) => ({ ...f, due_date: v }))}
                 />
               </label>
               <div style={{ display: "flex", alignItems: "flex-end" }}>

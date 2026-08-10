@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAidat } from "@/lib/aidatContext";
 import { supabase } from "@/lib/supabase";
 import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/lib/exportTable";
+import TrDateInput from "@/components/TrDateInput";
 
 type OpexCapex = "OPEX" | "CAPEX";
 
@@ -368,12 +369,7 @@ export default function ExpensesPage() {
             </label>
             <label className="auth-field">
               <span>Tarih</span>
-              <input
-                type="date" lang="tr"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-                required
-              />
+              <TrDateInput value={expenseDate} onChange={setExpenseDate} required />
             </label>
             <label className="auth-field">
               <span>Tutar (TRY)</span>
