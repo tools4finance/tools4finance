@@ -342,8 +342,8 @@ export default function KpiResultsPage() {
                                               )}
                                             </td>
                                             <td>{g.weight_pct}</td>
-                                            <td>{g.self_rating ?? "—"}</td>
-                                            <td className="wrap">{g.self_comment || "—"}</td>
+                                            <td>{g.self_rating ?? <span className="cell-pending">Bekleniyor</span>}</td>
+                                            <td className="wrap">{g.self_comment || <span className="cell-pending">Bekleniyor</span>}</td>
                                             <td>
                                               <input
                                                 type="number"

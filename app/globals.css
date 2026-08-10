@@ -209,6 +209,32 @@ footer.site-footer { border-top: 0.5px solid var(--border); padding: 24px 40px; 
 .auth-field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text2); }
 .auth-field input { padding: 9px 12px; font-size: 14px; color: var(--text); background: var(--bg); border: 0.5px solid var(--border-strong); border-radius: 8px; font-family: var(--font-inter), sans-serif; }
 .auth-field input:focus { outline: none; border-color: var(--accent); }
+
+/* Base look for every other input/select/textarea on the site — most are
+   used inline inside table cells (data-table rows, inline "add" forms)
+   without the .auth-field wrapper, so without this they fall back to a
+   near-invisible browser default and the whole panel reads as empty rather
+   than "fill these in". .auth-field input above already overrides this via
+   higher specificity, so this only fills the gap for everything else. */
+input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="date"], select, textarea {
+  padding: 6px 9px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg2);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 6px;
+  font-family: var(--font-inter), sans-serif;
+}
+input[type="text"]:focus, input[type="number"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Marks a table cell that's showing a placeholder ("—") because someone
+   else still needs to act on it (a manager review, a self-entry not yet
+   made) — distinguishes "waiting on input" from a genuine not-applicable
+   dash, so a mostly-empty review table doesn't read as just blank/dead. */
+.cell-pending { color: var(--amber); background: var(--amber-bg); padding: 2px 8px; border-radius: 5px; font-size: 12px; display: inline-block; }
 .auth-error { font-size: 12px; color: var(--coral); background: var(--coral-bg); padding: 8px 10px; border-radius: 6px; }
 .auth-info { font-size: 12px; color: var(--green); background: var(--green-bg); padding: 8px 10px; border-radius: 6px; }
 .auth-submit { width: 100%; margin-top: 4px; }

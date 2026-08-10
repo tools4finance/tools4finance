@@ -340,10 +340,10 @@ export default function KpiMyGoalsPage() {
                             )}
                           </td>
                           <td>
-                            {g.manager_rating ?? "—"}
+                            {g.manager_rating ?? <span className="cell-pending">Bekleniyor</span>}
                             {reviewed && !isClosed && <span className="pill pill-green" style={{ marginLeft: 6 }}>Değerlendirildi</span>}
                           </td>
-                          <td className="wrap">{g.manager_comment || "—"}</td>
+                          <td className="wrap">{g.manager_comment || <span className="cell-pending">Bekleniyor</span>}</td>
                           {!isClosed && (
                             <td style={{ whiteSpace: "nowrap" }}>
                               <button className="btn-secondary" onClick={() => handleUpdateGoal(g)}>Kaydet</button>{" "}
