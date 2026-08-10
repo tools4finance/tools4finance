@@ -247,11 +247,16 @@ export default function FxRatesPanel({ canWrite = false }: { canWrite?: boolean 
           </label>
           <label className="auth-field">
             <span>Başlangıç Tarihi</span>
-            <input type="date" value={avgStart} onChange={(e) => setAvgStart(e.target.value)} max={avgEnd} />
+            {/* lang="tr" makes Chromium render/parse this as gg.aa.yyyy instead
+                of falling back to the browser's default (often US MM/DD/YYYY)
+                — without it, typing a Turkish-ordered date like 31.12.2025
+                gets misread (day 31 as a month) and silently rejected, which
+                is what made picking any historical date look broken. */}
+            <input type="date" lang="tr" value={avgStart} onChange={(e) => setAvgStart(e.target.value)} max={avgEnd} />
           </label>
           <label className="auth-field">
             <span>Bitiş Tarihi</span>
-            <input type="date" value={avgEnd} onChange={(e) => setAvgEnd(e.target.value)} min={avgStart} />
+            <input type="date" lang="tr" value={avgEnd} onChange={(e) => setAvgEnd(e.target.value)} min={avgStart} />
           </label>
           <div style={{ display: "flex", alignItems: "flex-end" }}>
             <button className="btn-primary" onClick={handleComputeAverage} disabled={avgLoading}>

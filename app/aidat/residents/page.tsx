@@ -983,7 +983,7 @@ function ResidentOccupancyPanel({
           <label className="auth-field">
             <span>Başlangıç Tarihi</span>
             <input
-              type="date"
+              type="date" lang="tr"
               value={assignStartDate}
               onChange={(e) => setAssignStartDate(e.target.value)}
               required
@@ -1047,7 +1047,7 @@ function ResidentOccupancyPanel({
                         moveOutTargetId === occ.id ? (
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                             <input
-                              type="date"
+                              type="date" lang="tr"
                               value={moveOutDate}
                               onChange={(e) => setMoveOutDate(e.target.value)}
                               style={{

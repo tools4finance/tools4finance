@@ -507,7 +507,7 @@ export default function DuesPage() {
               <label className="auth-field">
                 <span>Tahakkuk Tarihi</span>
                 <input
-                  type="date"
+                  type="date" lang="tr"
                   value={adhoc.accrual_date}
                   onChange={(e) => setAdhoc((f) => ({ ...f, accrual_date: e.target.value }))}
                   required
@@ -516,7 +516,7 @@ export default function DuesPage() {
               <label className="auth-field">
                 <span>Vade Tarihi</span>
                 <input
-                  type="date"
+                  type="date" lang="tr"
                   value={adhoc.due_date}
                   onChange={(e) => setAdhoc((f) => ({ ...f, due_date: e.target.value }))}
                 />

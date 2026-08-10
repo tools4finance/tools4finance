@@ -369,7 +369,7 @@ export default function ExpensesPage() {
             <label className="auth-field">
               <span>Tarih</span>
               <input
-                type="date"
+                type="date" lang="tr"
                 value={expenseDate}
                 onChange={(e) => setExpenseDate(e.target.value)}
                 required

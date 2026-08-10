@@ -563,7 +563,7 @@ export default function PaymentsPage() {
               </label>
               <label className="auth-field">
                 <span>Tarih</span>
-                <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} required />
+                <input type="date" lang="tr" value={formDate} onChange={(e) => setFormDate(e.target.value)} required />
               </label>
               <label className="auth-field">
                 <span>Tutar</span>
@@ -807,11 +807,11 @@ export default function PaymentsPage() {
 
           <label className="auth-field">
             <span>Başlangıç Tarihi</span>
-            <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+            <input type="date" lang="tr" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
           </label>
           <label className="auth-field">
             <span>Bitiş Tarihi</span>
-            <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+            <input type="date" lang="tr" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
           </label>
         </div>
 
