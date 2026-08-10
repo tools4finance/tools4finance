@@ -8,11 +8,12 @@ export default function BrandMark() {
   return (
     <>
       <div className="nav-logo">
-        <Image src="/logo-icon.png" alt="tools4finance" width={34} height={34} priority />
+        <Image src="/logo-icon.png" alt="tools4finance" width={46} height={46} priority />
       </div>
       <span className="nav-wordmark">
         <span className="nw-tools">tools</span>
-        <span className="nw-4finance">4finance</span>
+        <span className="nw-4">4</span>
+        <span className="nw-tools">finance</span>
       </span>
     </>
   );
