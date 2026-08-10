@@ -5,7 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useKpi } from "@/lib/kpiContext";
 import { supabase } from "@/lib/supabase";
-import { sumWeights, isFullyWeighted } from "@/lib/kpiScoring";
+import { sumWeights, isFullyWeighted, type GoalDirection } from "@/lib/kpiScoring";
+
+const DIRECTION_LABEL: Record<GoalDirection, string> = {
+  higher_better: "yüksek iyi",
+  lower_better: "düşük iyi",
+};
 
 type Period = {
   id: string;
@@ -24,10 +29,13 @@ type CompanyGoal = {
   weight_pct: number;
   achievement_pct: number | null;
   hr_comment: string | null;
+  direction: GoalDirection | null;
+  target_value: number | null;
+  unit: string | null;
 };
 
 function emptyGoal() {
-  return { title: "", description: "", weight_pct: 0 };
+  return { title: "", description: "", weight_pct: 0, direction: "" as GoalDirection | "", target_value: "", unit: "" };
 }
 
 export default function KpiPeriodDetailPage() {
@@ -81,6 +89,9 @@ export default function KpiPeriodDetailPage() {
       description: newGoal.description || null,
       weight_pct: newGoal.weight_pct,
       display_order: goals.length,
+      direction: newGoal.direction || null,
+      target_value: newGoal.target_value === "" ? null : Number(newGoal.target_value),
+      unit: newGoal.unit || null,
     });
     setAdding(false);
     if (insertError) {
@@ -94,7 +105,14 @@ export default function KpiPeriodDetailPage() {
   async function handleUpdateGoal(goal: CompanyGoal) {
     const { error: updateError } = await supabase
       .from("KPI_company_goals")
-      .update({ title: goal.title, description: goal.description, weight_pct: goal.weight_pct })
+      .update({
+        title: goal.title,
+        description: goal.description,
+        weight_pct: goal.weight_pct,
+        direction: goal.direction,
+        target_value: goal.target_value,
+        unit: goal.unit,
+      })
       .eq("id", goal.id);
     if (updateError) setError(updateError.message);
   }
@@ -228,6 +246,12 @@ export default function KpiPeriodDetailPage() {
                       ) : (
                         g.title
                       )}
+                      {g.target_value !== null && (
+                        <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>
+                          Hedef: {g.target_value}{g.unit ? ` ${g.unit}` : ""}
+                          {g.direction && ` (${DIRECTION_LABEL[g.direction]})`}
+                        </div>
+                      )}
                     </td>
                     <td className="wrap">
                       {canManage ? (
@@ -286,6 +310,35 @@ export default function KpiPeriodDetailPage() {
                 onChange={(e) => setNewGoal({ ...newGoal, weight_pct: Number(e.target.value) })}
               />
             </label>
+            <label className="auth-field">
+              <span>Yön (opsiyonel — ölçülebilir hedef için)</span>
+              <select value={newGoal.direction} onChange={(e) => setNewGoal({ ...newGoal, direction: e.target.value as GoalDirection | "" })}>
+                <option value="">— Sonuçlar sayfasından manuel gerçekleşme % gireceğim</option>
+                <option value="higher_better">Yüksek değer iyi (ör. ciro)</option>
+                <option value="lower_better">Düşük değer iyi (ör. LTIFR, hata oranı)</option>
+              </select>
+            </label>
+            {newGoal.direction && (
+              <>
+                <label className="auth-field">
+                  <span>Hedef Değer</span>
+                  <input
+                    type="number"
+                    step="any"
+                    value={newGoal.target_value}
+                    onChange={(e) => setNewGoal({ ...newGoal, target_value: e.target.value })}
+                  />
+                </label>
+                <label className="auth-field">
+                  <span>Birim</span>
+                  <input
+                    value={newGoal.unit}
+                    onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
+                    placeholder="%, TL, adet, gün…"
+                  />
+                </label>
+              </>
+            )}
             <div style={{ display: "flex", alignItems: "flex-end" }}>
               <button className="btn-primary" type="submit" disabled={adding || !newGoal.title.trim()}>
                 {adding ? "Kaydediliyor…" : "+ Hedef Ekle"}

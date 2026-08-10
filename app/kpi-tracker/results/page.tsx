@@ -3,10 +3,25 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useKpi } from "@/lib/kpiContext";
 import { supabase } from "@/lib/supabase";
-import { companyScore, individualScore, finalScore, isFullyWeighted } from "@/lib/kpiScoring";
+import { companyScore, individualScore, finalScore, isFullyWeighted, computeAchievementPct, type GoalDirection } from "@/lib/kpiScoring";
+
+const DIRECTION_LABEL: Record<GoalDirection, string> = {
+  higher_better: "yüksek iyi",
+  lower_better: "düşük iyi",
+};
 
 type Period = { id: string; name: string; year: number; status: string; company_weight_pct: number; individual_weight_pct: number };
-type CompanyGoal = { id: string; title: string; weight_pct: number; achievement_pct: number | null; hr_comment: string | null };
+type CompanyGoal = {
+  id: string;
+  title: string;
+  weight_pct: number;
+  achievement_pct: number | null;
+  hr_comment: string | null;
+  direction: GoalDirection | null;
+  target_value: number | null;
+  actual_value: number | null;
+  unit: string | null;
+};
 type Member = { id: string; full_name: string; email: string };
 type IndividualGoal = {
   id: string;
@@ -17,6 +32,10 @@ type IndividualGoal = {
   self_comment: string | null;
   manager_rating: number | null;
   manager_comment: string | null;
+  direction: GoalDirection | null;
+  target_value: number | null;
+  actual_value: number | null;
+  unit: string | null;
 };
 
 type HistoryEntry = {
@@ -81,7 +100,7 @@ export default function KpiResultsPage() {
     setLoading(true);
     setError(null);
     const [cgRes, memberRes, igRes] = await Promise.all([
-      supabase.from("KPI_company_goals").select("id, title, weight_pct, achievement_pct, hr_comment").eq("period_id", selectedPeriodId).order("display_order"),
+      supabase.from("KPI_company_goals").select("id, title, weight_pct, achievement_pct, hr_comment, direction, target_value, actual_value, unit").eq("period_id", selectedPeriodId).order("display_order"),
       supabase.from("KPI_members").select("id, full_name, email").eq("org_id", orgId).order("full_name"),
       supabase.from("KPI_individual_goals").select("*").eq("period_id", selectedPeriodId),
     ]);
@@ -106,9 +125,13 @@ export default function KpiResultsPage() {
   const cScore = useMemo(() => companyScore(companyGoals), [companyGoals]);
 
   async function handleUpdateCompanyGoal(goal: CompanyGoal) {
+    const hasTarget = goal.target_value !== null;
+    const achievement_pct = hasTarget
+      ? computeAchievementPct(goal.direction, goal.target_value, goal.actual_value)
+      : goal.achievement_pct;
     const { error: updateError } = await supabase
       .from("KPI_company_goals")
-      .update({ achievement_pct: goal.achievement_pct, hr_comment: goal.hr_comment })
+      .update({ achievement_pct, hr_comment: goal.hr_comment, actual_value: goal.actual_value })
       .eq("id", goal.id);
     if (updateError) setError(updateError.message);
     else await fetchDetail();
@@ -181,11 +204,37 @@ export default function KpiResultsPage() {
                     <tr><th className="wrap">Başlık</th><th>Ağırlık %</th><th>Gerçekleşme %</th><th className="wrap">İK Yorumu</th><th></th></tr>
                   </thead>
                   <tbody>
-                    {companyGoals.map((g) => (
+                    {companyGoals.map((g) => {
+                      const hasTarget = g.target_value !== null;
+                      const computed = hasTarget ? computeAchievementPct(g.direction, g.target_value, g.actual_value) : null;
+                      return (
                       <tr key={g.id}>
-                        <td className="wrap">{g.title}</td>
+                        <td className="wrap">
+                          {g.title}
+                          {hasTarget && (
+                            <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>
+                              Hedef: {g.target_value}{g.unit ? ` ${g.unit}` : ""}
+                              {g.direction && ` (${DIRECTION_LABEL[g.direction]})`}
+                            </div>
+                          )}
+                        </td>
                         <td>{g.weight_pct}</td>
                         <td>
+                          {hasTarget ? (
+                            <div>
+                              <input
+                                type="number"
+                                step="any"
+                                placeholder="Gerçekleşen değer"
+                                value={g.actual_value ?? ""}
+                                onChange={(e) => setCompanyGoals(companyGoals.map((x) => (x.id === g.id ? { ...x, actual_value: e.target.value === "" ? null : Number(e.target.value) } : x)))}
+                                style={{ width: 90 }}
+                              />
+                              <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 3 }}>
+                                = %{computed !== null ? computed.toFixed(1) : "—"}
+                              </div>
+                            </div>
+                          ) : (
                           <input
                             type="number"
                             step="any"
@@ -195,6 +244,7 @@ export default function KpiResultsPage() {
                             onChange={(e) => setCompanyGoals(companyGoals.map((x) => (x.id === g.id ? { ...x, achievement_pct: e.target.value === "" ? null : Number(e.target.value) } : x)))}
                             style={{ width: 80 }}
                           />
+                          )}
                         </td>
                         <td className="wrap">
                           <input
@@ -205,7 +255,8 @@ export default function KpiResultsPage() {
                         </td>
                         <td><button className="btn-secondary" onClick={() => handleUpdateCompanyGoal(g)}>Kaydet</button></td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -281,7 +332,15 @@ export default function KpiResultsPage() {
                                         {memberGoals.map((g) => (
                                           <Fragment key={g.id}>
                                           <tr>
-                                            <td className="wrap">{g.title}</td>
+                                            <td className="wrap">
+                                              {g.title}
+                                              {g.target_value !== null && (
+                                                <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>
+                                                  Hedef: {g.target_value}{g.unit ? ` ${g.unit}` : ""}
+                                                  {g.direction && ` (${DIRECTION_LABEL[g.direction]})`} · Gerçekleşen: {g.actual_value ?? "—"}
+                                                </div>
+                                              )}
+                                            </td>
                                             <td>{g.weight_pct}</td>
                                             <td>{g.self_rating ?? "—"}</td>
                                             <td className="wrap">{g.self_comment || "—"}</td>

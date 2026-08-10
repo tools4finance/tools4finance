@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useKpi } from "@/lib/kpiContext";
 import { supabase } from "@/lib/supabase";
-import { sumWeights, isFullyWeighted, companyScore, individualScore, finalScore } from "@/lib/kpiScoring";
+import { sumWeights, isFullyWeighted, companyScore, individualScore, finalScore, computeAchievementPct, type GoalDirection } from "@/lib/kpiScoring";
+
+const DIRECTION_LABEL: Record<GoalDirection, string> = {
+  higher_better: "yüksek iyi",
+  lower_better: "düşük iyi",
+};
 
 type Period = {
   id: string;
@@ -24,10 +29,14 @@ type IndividualGoal = {
   self_comment: string | null;
   manager_rating: number | null;
   manager_comment: string | null;
+  direction: GoalDirection | null;
+  target_value: number | null;
+  actual_value: number | null;
+  unit: string | null;
 };
 
 function emptyGoal() {
-  return { title: "", description: "", weight_pct: 0 };
+  return { title: "", description: "", weight_pct: 0, direction: "" as GoalDirection | "", target_value: "", unit: "" };
 }
 
 export default function KpiMyGoalsPage() {
@@ -103,6 +112,8 @@ export default function KpiMyGoalsPage() {
     if (!period || !memberId || !orgId || !newGoal.title.trim()) return;
     setAdding(true);
     setError(null);
+    const direction = newGoal.direction || null;
+    const target_value = newGoal.target_value === "" ? null : Number(newGoal.target_value);
     const { error: insertError } = await supabase.from("KPI_individual_goals").insert({
       org_id: orgId,
       period_id: period.id,
@@ -111,6 +122,9 @@ export default function KpiMyGoalsPage() {
       description: newGoal.description || null,
       weight_pct: newGoal.weight_pct,
       display_order: goals.length,
+      direction,
+      target_value,
+      unit: newGoal.unit || null,
     });
     setAdding(false);
     if (insertError) {
@@ -122,14 +136,26 @@ export default function KpiMyGoalsPage() {
   }
 
   async function handleUpdateGoal(goal: IndividualGoal) {
+    // A goal with a target has its self_rating CALCULATED from
+    // direction+target+actual rather than typed in — see
+    // computeAchievementPct in lib/kpiScoring.ts. Goals without a target
+    // (target_value null) keep the manual percentage the employee typed.
+    const hasTarget = goal.target_value !== null;
+    const self_rating = hasTarget
+      ? computeAchievementPct(goal.direction, goal.target_value, goal.actual_value)
+      : goal.self_rating;
     const { error: updateError } = await supabase
       .from("KPI_individual_goals")
       .update({
         title: goal.title,
         description: goal.description,
         weight_pct: goal.weight_pct,
-        self_rating: goal.self_rating,
+        self_rating,
         self_comment: goal.self_comment,
+        direction: goal.direction,
+        target_value: goal.target_value,
+        actual_value: goal.actual_value,
+        unit: goal.unit,
       })
       .eq("id", goal.id);
     if (updateError) {
@@ -241,6 +267,8 @@ export default function KpiMyGoalsPage() {
                         // like it worked and then get reverted on refetch.
                         const reviewed = g.manager_rating !== null;
                         const structuralLocked = isClosed || reviewed;
+                        const hasTarget = g.target_value !== null;
+                        const computed = hasTarget ? computeAchievementPct(g.direction, g.target_value, g.actual_value) : null;
                         return (
                         <tr key={g.id}>
                           <td className="wrap">
@@ -250,6 +278,12 @@ export default function KpiMyGoalsPage() {
                                 onChange={(e) => setGoals(goals.map((x) => (x.id === g.id ? { ...x, title: e.target.value } : x)))}
                                 style={{ width: "100%", minWidth: 140 }}
                               />
+                            )}
+                            {hasTarget && (
+                              <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>
+                                Hedef: {g.target_value}{g.unit ? ` ${g.unit}` : ""}
+                                {g.direction && ` (${DIRECTION_LABEL[g.direction]})`}
+                              </div>
                             )}
                           </td>
                           <td>
@@ -264,7 +298,27 @@ export default function KpiMyGoalsPage() {
                             )}
                           </td>
                           <td>
-                            {isClosed ? (g.self_rating ?? "—") : (
+                            {hasTarget ? (
+                              <div>
+                                {isClosed ? (
+                                  <div style={{ fontSize: 12 }}>{g.actual_value ?? "—"}{g.unit ? ` ${g.unit}` : ""}</div>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    placeholder="Gerçekleşen değer"
+                                    value={g.actual_value ?? ""}
+                                    onChange={(e) => setGoals(goals.map((x) => (x.id === g.id ? { ...x, actual_value: e.target.value === "" ? null : Number(e.target.value) } : x)))}
+                                    style={{ width: 90 }}
+                                  />
+                                )}
+                                <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 3 }}>
+                                  = %{computed !== null ? computed.toFixed(1) : "—"}
+                                </div>
+                              </div>
+                            ) : isClosed ? (
+                              g.self_rating ?? "—"
+                            ) : (
                               <input
                                 type="number"
                                 step="any"
@@ -325,6 +379,35 @@ export default function KpiMyGoalsPage() {
                       onChange={(e) => setNewGoal({ ...newGoal, weight_pct: Number(e.target.value) })}
                     />
                   </label>
+                  <label className="auth-field">
+                    <span>Yön (opsiyonel — ölçülebilir hedef için)</span>
+                    <select value={newGoal.direction} onChange={(e) => setNewGoal({ ...newGoal, direction: e.target.value as GoalDirection | "" })}>
+                      <option value="">— Manuel gerçekleşme % gireceğim</option>
+                      <option value="higher_better">Yüksek değer iyi (ör. ciro)</option>
+                      <option value="lower_better">Düşük değer iyi (ör. LTIFR, hata oranı)</option>
+                    </select>
+                  </label>
+                  {newGoal.direction && (
+                    <>
+                      <label className="auth-field">
+                        <span>Hedef Değer</span>
+                        <input
+                          type="number"
+                          step="any"
+                          value={newGoal.target_value}
+                          onChange={(e) => setNewGoal({ ...newGoal, target_value: e.target.value })}
+                        />
+                      </label>
+                      <label className="auth-field">
+                        <span>Birim</span>
+                        <input
+                          value={newGoal.unit}
+                          onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
+                          placeholder="%, TL, adet, gün…"
+                        />
+                      </label>
+                    </>
+                  )}
                   <div style={{ display: "flex", alignItems: "flex-end" }}>
                     <button className="btn-primary" type="submit" disabled={adding || !newGoal.title.trim()}>
                       {adding ? "Kaydediliyor…" : "+ Hedef Ekle"}
