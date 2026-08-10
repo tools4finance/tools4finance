@@ -573,13 +573,14 @@ function CriterionCard({
       {criterion.formula_type === "band" && (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8 }}>
-            Aralık Tablosu — değerler her iki sınır da dahil olacak şekilde eşleşir (örn. 1 – 4 aralığı 1, 2, 3, 4 değerlerini kapsar).
-            Üst sınır boş bırakılırsa aralık sınırsız (açık uçlu) olur.
+            Aralık Tablosu — bir değer, üst sınırı kendisinden büyük veya eşit olan İLK dilime girer (örn. 1 – 4
+            ve 5 – 9 dilimleri varsa, 4,5 gibi aradaki bir değer otomatik olarak 5 – 9 dilimine dahil olur; hiçbir
+            değer 0 puanla "boşlukta" kalmaz). Üst sınır boş bırakılırsa aralık sınırsız (açık uçlu) olur.
           </div>
           {bandIssues.length > 0 && (
             <div className="auth-error" style={{ marginBottom: 8 }}>
               {bandIssues.map((issue, i) => (
-                <div key={i}>{issue.type === "overlap" ? "⚠ Çakışma: " : "ℹ Boşluk: "}{issue.message}</div>
+                <div key={i}>⚠ Çakışma: {issue.message}</div>
               ))}
             </div>
           )}

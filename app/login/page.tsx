@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import BrandMark from "@/components/BrandMark";
 
 function LoginForm() {
   const router = useRouter();
@@ -131,6 +132,9 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="auth-page">
+      <Link href="/" className="nav-brand auth-brand">
+        <BrandMark />
+      </Link>
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>

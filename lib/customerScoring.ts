@@ -192,8 +192,20 @@ export function computeScore(customer: CustomerRow, config: ScoringConfig): Scor
       points = criterion.active ? criterion.weight * directional : 0;
     } else if (criterion.formula_type === "band") {
       const value = rawToNumber(raw);
-      const bands = config.bands[criterion.id] ?? [];
-      const band = bands.find((b) => value >= b.min_value && (b.max_value === null || value <= b.max_value));
+      // Ceiling match (smallest upper bound that still covers the value,
+      // ascending; open-ended last) rather than a strict min<=v<=max window —
+      // real-world inputs are continuous (e.g. 7.01 overdue days) while band
+      // boundaries are typically typed as whole numbers ("0–7", "8–30"), so a
+      // strict window would silently score anything between two displayed
+      // boundaries as 0. Ceiling matching instead rolls a value like 7.01
+      // into the next band ("8–30"), matching how aging buckets actually
+      // work: once you've crossed a threshold you're in the next bucket.
+      const sorted = [...(config.bands[criterion.id] ?? [])].sort((a, b) => {
+        if (a.max_value === null) return 1;
+        if (b.max_value === null) return -1;
+        return a.max_value - b.max_value;
+      });
+      const band = sorted.find((b) => b.max_value === null || value <= b.max_value);
       points = criterion.active ? band?.points ?? 0 : 0;
     }
 
@@ -229,10 +241,15 @@ export function totalActiveWeight(criteria: Pick<Criterion, "weight" | "active">
   return criteria.filter((c) => c.active).reduce((s, c) => s + c.weight, 0);
 }
 
-// Overlap/gap checker for a single criterion's bands, sorted by min_value —
-// used by the parameters UI so ambiguous band ranges (the original product
-// complaint) are caught before they silently mis-score a customer.
-export type BandIssue = { type: "overlap" | "gap"; message: string };
+// Overlap checker for a single criterion's bands, sorted by min_value — used
+// by the parameters UI so genuinely ambiguous configuration (two bands both
+// claiming the same numeric span) is caught before it confuses whoever's
+// reading the table. This only flags true overlaps: computeScore's band
+// matching is a ceiling search (smallest max_value >= value, ascending), so
+// a display gap like "0–7" / "8–30" never actually produces a 0-point hole —
+// a value like 7.01 just rolls into "8–30" — which is why gaps aren't
+// reported as an issue here, only as an informational note in the UI.
+export type BandIssue = { type: "overlap"; message: string };
 
 export function checkBandIssues(bands: Pick<Band, "min_value" | "max_value">[]): BandIssue[] {
   const sorted = [...bands].sort((a, b) => a.min_value - b.min_value);
@@ -243,8 +260,6 @@ export function checkBandIssues(bands: Pick<Band, "min_value" | "max_value">[]):
     if (cur.max_value === null) continue; // open-ended band swallows everything after it; nothing to compare
     if (next.min_value <= cur.max_value) {
       issues.push({ type: "overlap", message: `${cur.min_value}–${cur.max_value} ile ${next.min_value}–${next.max_value ?? "∞"} aralıkları çakışıyor.` });
-    } else if (next.min_value > cur.max_value + 0.000001) {
-      issues.push({ type: "gap", message: `${cur.max_value} ile ${next.min_value} arasında boşluk var — bu aralığa düşen değerler 0 puan alır.` });
     }
   }
   return issues;
