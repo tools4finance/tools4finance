@@ -300,7 +300,7 @@ export default function FxRatesPanel({ canWrite = false }: { canWrite?: boolean 
                 Seçilen aralıkta ({avgStart} – {avgEnd}) TCMB kur verisi bulunamadı.
                 {canWrite && (
                   <div style={{ marginTop: 10 }}>
-                    <button className="btn-secondary" onClick={handleBackfill} disabled={backfilling}>
+                    <button className="btn-primary" onClick={handleBackfill} disabled={backfilling}>
                       {backfilling ? "Çekiliyor…" : "TCMB'den Geçmiş Veri Çek"}
                     </button>
                   </div>
@@ -310,7 +310,7 @@ export default function FxRatesPanel({ canWrite = false }: { canWrite?: boolean 
               <div className="kpi-sub">
                 Hafta sonu / resmi tatil günlerinde TCMB bülteni yayınlanmadığından bu günler ortalamaya dahil edilmemiştir.
                 {canWrite && (
-                  <button className="btn-secondary" onClick={handleBackfill} disabled={backfilling} style={{ marginLeft: 10 }}>
+                  <button className="btn-primary" onClick={handleBackfill} disabled={backfilling} style={{ marginLeft: 10 }}>
                     {backfilling ? "Çekiliyor…" : "Eksik Günleri TCMB'den Çek"}
                   </button>
                 )}
